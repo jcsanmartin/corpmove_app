@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "997894960192",
+    "project_id": "corpmove-bd09a",
+    "storage_bucket": "corpmove-bd09a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:997894960192:android:dac5140376f09fe7f01ba5",
+        "android_client_info": {
+          "package_name": "com.example.corpmove_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCZSGzBK-Vik1EjLhdyeGqqt28sUJJ13Iw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
