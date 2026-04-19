@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:corpmove_app/features/company_admin/presentation/screens/solicitudes_pendientes.dart';
 
 class CompanyAdminScreen extends StatelessWidget {
   const CompanyAdminScreen({super.key});
@@ -25,7 +26,7 @@ class CompanyAdminScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
-          // Resumen de empleados
+          // 📊 Resumen de empleados
           Card(
             child: Padding(
               padding: const EdgeInsets.all(20),
@@ -49,8 +50,10 @@ class CompanyAdminScreen extends StatelessWidget {
               ),
             ),
           ),
+
           const SizedBox(height: 20),
-          // Configuración de techos
+
+          // ⚙️ Configuración
           Card(
             child: Padding(
               padding: const EdgeInsets.all(20),
@@ -71,8 +74,10 @@ class CompanyAdminScreen extends StatelessWidget {
               ),
             ),
           ),
+
           const SizedBox(height: 20),
-          // Lista de empleados recientes
+
+          // 👥 Empleados recientes
           Card(
             child: Padding(
               padding: const EdgeInsets.all(20),
@@ -91,8 +96,10 @@ class CompanyAdminScreen extends StatelessWidget {
               ),
             ),
           ),
+
           const SizedBox(height: 20),
-          // Botón de reportes
+
+          // 📥 Botón reporte
           ElevatedButton.icon(
             onPressed: () {
               ScaffoldMessenger.of(context).showSnackBar(
@@ -112,7 +119,7 @@ class CompanyAdminScreen extends StatelessWidget {
     );
   }
 
-  // --- Drawer del Administrador ---
+  // 🔥 Drawer ADMIN COMPLETO
   Widget _buildDrawer(BuildContext context) {
     return Drawer(
       child: ListView(
@@ -143,17 +150,18 @@ class CompanyAdminScreen extends StatelessWidget {
               ],
             ),
           ),
+
           ListTile(
             leading: const Icon(Icons.people),
             title: const Text('Empleados'),
             onTap: () {
               Navigator.pop(context);
-              // Aquí podrías navegar a una vista de gestión de empleados
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Gestión de empleados')),
               );
             },
           ),
+
           ListTile(
             leading: const Icon(Icons.settings),
             title: const Text('Configuración de convenio'),
@@ -164,6 +172,22 @@ class CompanyAdminScreen extends StatelessWidget {
               );
             },
           ),
+
+          // 🔥 ESTE ES EL IMPORTANTE (SOLICITUDES)
+          ListTile(
+            leading: const Icon(Icons.pending_actions),
+            title: const Text('Solicitudes pendientes'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const SolicitudesPendientes(),
+                ),
+              );
+            },
+          ),
+
           ListTile(
             leading: const Icon(Icons.bar_chart),
             title: const Text('Reportes'),
@@ -174,13 +198,14 @@ class CompanyAdminScreen extends StatelessWidget {
               );
             },
           ),
+
           const Divider(),
+
           ListTile(
             leading: const Icon(Icons.logout),
             title: const Text('Cerrar sesión'),
             onTap: () {
               Navigator.pop(context);
-              // Regresar al login
               Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
             },
           ),
@@ -189,6 +214,7 @@ class CompanyAdminScreen extends StatelessWidget {
     );
   }
 
+  // 📊 Stats
   Widget _buildStat(String label, String value, Color color) {
     return Column(
       children: [
@@ -205,6 +231,7 @@ class CompanyAdminScreen extends StatelessWidget {
     );
   }
 
+  // ⚙️ Config items
   Widget _buildConfigItem(String label, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
@@ -225,6 +252,7 @@ class CompanyAdminScreen extends StatelessWidget {
     );
   }
 
+  // 👤 Empleado
   Widget _buildEmployeeTile(String name, String email, bool isActive) {
     return ListTile(
       leading: CircleAvatar(

@@ -158,7 +158,6 @@ class NegotiationRadarScreen extends StatelessWidget {
         ? (superaTecho ? techoCobertura : offerAmount)
         : 0.0;
     final double excedente = isCorporateMode && superaTecho ? offerAmount - techoCobertura : 0.0;
-    final double pagaUsuario = isCorporateMode ? excedente : offerAmount;
 
     return Container(
       decoration: BoxDecoration(

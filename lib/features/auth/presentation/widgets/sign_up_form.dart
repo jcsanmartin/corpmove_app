@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:corpmove_app/core/services/auth_service.dart';
 import 'package:corpmove_app/core/utils/user_role.dart';
@@ -18,9 +19,9 @@ class _SignUpFormState extends State<SignUpForm> {
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _confirmPasswordController = TextEditingController();
+  final _confirmController = TextEditingController();
   bool _isPasswordVisible = false;
-  bool _isConfirmPasswordVisible = false;
+  bool _isConfirmVisible = false;
   bool _isLoading = false;
 
   final AuthService _authService = AuthService();
@@ -30,67 +31,65 @@ class _SignUpFormState extends State<SignUpForm> {
     _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
-    _confirmPasswordController.dispose();
+    _confirmController.dispose();
     super.dispose();
   }
 
   Future<void> _signUp() async {
-    if (_formKey.currentState!.validate()) {
-      setState(() => _isLoading = true);
-      try {
-        final userData = await _authService.signUpWithEmail(
-          name: _nameController.text.trim(),
-          email: _emailController.text.trim(),
-          password: _passwordController.text,
-        );
-        _navigateToRole(userData['role'] as UserRole);
-      } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${e.toString()}'), backgroundColor: Colors.red),
-        );
-      } finally {
-        setState(() => _isLoading = false);
+    if (!_formKey.currentState!.validate()) return;
+    setState(() => _isLoading = true);
+    try {
+      final user = await _authService.signUpWithEmail(
+        name: _nameController.text.trim(),
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+      );
+      if (user != null) {
+        final role = _authService.getRoleFromEmail(user.email!);
+        _navigateToRole(role);
       }
+    } on FirebaseAuthException catch (e) {
+      String msg = 'Error al registrarse';
+      if (e.code == 'email-already-in-use') msg = 'Este correo ya está registrado';
+      else if (e.code == 'invalid-email') msg = 'Correo inválido';
+      else if (e.code == 'weak-password') msg = 'La contraseña es muy débil';
+      _showError(msg);
+    } catch (e) {
+      _showError('Error: $e');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
   Future<void> _signUpWithGoogle() async {
     setState(() => _isLoading = true);
     try {
-      final userData = await _authService.signInWithGoogle();
-      _navigateToRole(userData['role'] as UserRole);
+      final user = await _authService.signInWithGoogle();
+      if (user != null) {
+        final role = _authService.getRoleFromEmail(user.email!);
+        _navigateToRole(role);
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: ${e.toString()}'), backgroundColor: Colors.red),
-      );
+      _showError('Error con Google: $e');
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
   void _navigateToRole(UserRole role) {
     Widget screen;
     switch (role) {
-      case UserRole.owner:
-        screen = const OwnerDashboardScreen();
-        break;
-      case UserRole.admin:
-        screen = const CompanyAdminScreen();
-        break;
-      case UserRole.driver:
-        screen = const DriverHomeScreen();
-        break;
-      case UserRole.employee:
-        screen = const PassengerHomeScreen(isCorporateEnabled: true);
-        break;
-      case UserRole.normal:
-        screen = const PassengerHomeScreen(isCorporateEnabled: false);
-        break;
+      case UserRole.owner: screen = const OwnerDashboardScreen(); break;
+      case UserRole.admin: screen = const CompanyAdminScreen(); break;
+      case UserRole.driver: screen = const DriverHomeScreen(); break;
+      case UserRole.employee: screen = const PassengerHomeScreen(isCorporateEnabled: true); break;
+      default: screen = const PassengerHomeScreen(isCorporateEnabled: false);
     }
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (_) => screen),
-    );
+    Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => screen));
+  }
+
+  void _showError(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), backgroundColor: Colors.red));
   }
 
   @override
@@ -101,28 +100,15 @@ class _SignUpFormState extends State<SignUpForm> {
         children: [
           TextFormField(
             controller: _nameController,
-            decoration: const InputDecoration(
-              labelText: 'Nombre completo',
-              prefixIcon: Icon(Icons.person_outline),
-            ),
-            validator: (value) {
-              if (value == null || value.isEmpty) return 'Ingresa tu nombre';
-              return null;
-            },
+            decoration: const InputDecoration(labelText: 'Nombre completo', prefixIcon: Icon(Icons.person_outline)),
+            validator: (v) => (v == null || v.isEmpty) ? 'Ingresa tu nombre' : null,
           ),
           const SizedBox(height: 20),
           TextFormField(
             controller: _emailController,
             keyboardType: TextInputType.emailAddress,
-            decoration: const InputDecoration(
-              labelText: 'Correo electrónico',
-              prefixIcon: Icon(Icons.email_outlined),
-            ),
-            validator: (value) {
-              if (value == null || value.isEmpty) return 'Ingresa tu correo';
-              if (!value.contains('@')) return 'Correo inválido';
-              return null;
-            },
+            decoration: const InputDecoration(labelText: 'Correo electrónico', prefixIcon: Icon(Icons.email_outlined)),
+            validator: (v) => (v == null || v.isEmpty) ? 'Ingresa tu correo' : (!v.contains('@') ? 'Correo inválido' : null),
           ),
           const SizedBox(height: 20),
           TextFormField(
@@ -132,37 +118,25 @@ class _SignUpFormState extends State<SignUpForm> {
               labelText: 'Contraseña',
               prefixIcon: const Icon(Icons.lock_outline),
               suffixIcon: IconButton(
-                icon: Icon(
-                  _isPasswordVisible ? Icons.visibility_off : Icons.visibility,
-                ),
+                icon: Icon(_isPasswordVisible ? Icons.visibility_off : Icons.visibility),
                 onPressed: () => setState(() => _isPasswordVisible = !_isPasswordVisible),
               ),
             ),
-            validator: (value) {
-              if (value == null || value.isEmpty) return 'Ingresa una contraseña';
-              if (value.length < 6) return 'Mínimo 6 caracteres';
-              return null;
-            },
+            validator: (v) => (v == null || v.isEmpty) ? 'Ingresa una contraseña' : (v.length < 6 ? 'Mínimo 6 caracteres' : null),
           ),
           const SizedBox(height: 20),
           TextFormField(
-            controller: _confirmPasswordController,
-            obscureText: !_isConfirmPasswordVisible,
+            controller: _confirmController,
+            obscureText: !_isConfirmVisible,
             decoration: InputDecoration(
               labelText: 'Confirmar contraseña',
               prefixIcon: const Icon(Icons.lock_outline),
               suffixIcon: IconButton(
-                icon: Icon(
-                  _isConfirmPasswordVisible ? Icons.visibility_off : Icons.visibility,
-                ),
-                onPressed: () => setState(() => _isConfirmPasswordVisible = !_isConfirmPasswordVisible),
+                icon: Icon(_isConfirmVisible ? Icons.visibility_off : Icons.visibility),
+                onPressed: () => setState(() => _isConfirmVisible = !_isConfirmVisible),
               ),
             ),
-            validator: (value) {
-              if (value == null || value.isEmpty) return 'Confirma tu contraseña';
-              if (value != _passwordController.text) return 'Las contraseñas no coinciden';
-              return null;
-            },
+            validator: (v) => (v == null || v.isEmpty) ? 'Confirma tu contraseña' : (v != _passwordController.text ? 'Las contraseñas no coinciden' : null),
           ),
           const SizedBox(height: 30),
           SizedBox(
@@ -170,15 +144,8 @@ class _SignUpFormState extends State<SignUpForm> {
             child: ElevatedButton(
               onPressed: _isLoading ? null : _signUp,
               child: _isLoading
-                  ? const SizedBox(
-                      width: 24,
-                      height: 24,
-                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
-                    )
-                  : const Text(
-                      'Registrarse',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-                    ),
+                  ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
+                  : const Text('Registrarse', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
             ),
           ),
           const SizedBox(height: 15),
@@ -188,11 +155,9 @@ class _SignUpFormState extends State<SignUpForm> {
             width: double.infinity,
             child: OutlinedButton.icon(
               onPressed: _isLoading ? null : _signUpWithGoogle,
-              icon: Image.network(
-                'https://img.icons8.com/color/48/000000/google-logo.png',
-                width: 24,
-                height: 24,
-              ),
+              icon: _isLoading
+                  ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2.5))
+                  : Image.network('https://img.icons8.com/color/48/000000/google-logo.png', width: 24, height: 24),
               label: const Text('Google'),
               style: OutlinedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 14),

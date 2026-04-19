@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:corpmove_app/features/trip_passenger/presentation/screens/negotiation_radar_screen.dart';
 import 'package:corpmove_app/features/trip_passenger/presentation/widgets/map_placeholder.dart';
 import 'package:corpmove_app/features/trip_passenger/presentation/widgets/dual_mode_selector.dart';
+import 'package:corpmove_app/features/trip_passenger/presentation/widgets/profile_tab.dart';
 
 class PassengerHomeScreen extends StatefulWidget {
   final bool isCorporateEnabled;
@@ -18,7 +19,7 @@ class PassengerHomeScreen extends StatefulWidget {
 class _PassengerHomeScreenState extends State<PassengerHomeScreen> {
   late bool _isCorporateMode;
   final double _techoCobertura = 15000.0;
-  int _selectedIndex = 0; // Para el BottomNavigationBar
+  int _selectedIndex = 0;
 
   @override
   void initState() {
@@ -26,11 +27,10 @@ class _PassengerHomeScreenState extends State<PassengerHomeScreen> {
     _isCorporateMode = widget.isCorporateEnabled;
   }
 
-  // Lista de pantallas para el Body según la pestaña seleccionada
   late final List<Widget> _screens = [
-    _buildHomeTab(),      // Inicio (mapa + selector)
-    const _HistoryTab(),  // Historial de viajes
-    const _ProfileTab(),  // Perfil del usuario
+    _buildHomeTab(),
+    const _HistoryTab(),
+    const ProfileTab(),
   ];
 
   @override
@@ -69,7 +69,6 @@ class _PassengerHomeScreenState extends State<PassengerHomeScreen> {
     );
   }
 
-  // --- Drawer ---
   Widget _buildDrawer(BuildContext context) {
     return Drawer(
       child: ListView(
@@ -105,7 +104,6 @@ class _PassengerHomeScreenState extends State<PassengerHomeScreen> {
             title: const Text('Mi cuenta'),
             onTap: () {
               Navigator.pop(context);
-              // Navegar a perfil
               setState(() => _selectedIndex = 2);
             },
           ),
@@ -125,7 +123,6 @@ class _PassengerHomeScreenState extends State<PassengerHomeScreen> {
             title: const Text('Cerrar sesión'),
             onTap: () {
               Navigator.pop(context);
-              // Regresar al login
               Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
             },
           ),
@@ -134,7 +131,6 @@ class _PassengerHomeScreenState extends State<PassengerHomeScreen> {
     );
   }
 
-  // --- Contenido de la pestaña "Inicio" (el mapa que ya teníamos) ---
   Widget _buildHomeTab() {
     return Stack(
       children: [
@@ -178,7 +174,6 @@ class _PassengerHomeScreenState extends State<PassengerHomeScreen> {
                   if (widget.isCorporateEnabled)
                     AnimatedSwitcher(
                       duration: const Duration(milliseconds: 300),
-                      transitionBuilder: (child, animation) => FadeTransition(opacity: animation, child: child),
                       child: Container(
                         key: ValueKey(_isCorporateMode),
                         margin: const EdgeInsets.only(right: 8),
@@ -335,7 +330,6 @@ class _PassengerHomeScreenState extends State<PassengerHomeScreen> {
   }
 }
 
-// --- Pestañas secundarias (simples por ahora) ---
 class _HistoryTab extends StatelessWidget {
   const _HistoryTab();
 
@@ -348,25 +342,6 @@ class _HistoryTab extends StatelessWidget {
           Icon(Icons.history, size: 64, color: Colors.grey),
           SizedBox(height: 16),
           Text('Historial de viajes', style: TextStyle(fontSize: 18)),
-          Text('Próximamente...', style: TextStyle(color: Colors.grey)),
-        ],
-      ),
-    );
-  }
-}
-
-class _ProfileTab extends StatelessWidget {
-  const _ProfileTab();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.person, size: 64, color: Colors.grey),
-          SizedBox(height: 16),
-          Text('Perfil de usuario', style: TextStyle(fontSize: 18)),
           Text('Próximamente...', style: TextStyle(color: Colors.grey)),
         ],
       ),

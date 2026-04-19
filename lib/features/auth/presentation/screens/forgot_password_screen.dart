@@ -15,72 +15,51 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   final AuthService _authService = AuthService();
 
   Future<void> _resetPassword() async {
-    if (_formKey.currentState!.validate()) {
-      setState(() => _isLoading = true);
-      try {
-        await _authService.resetPassword(_emailController.text.trim());
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Se ha enviado un enlace de recuperación a tu correo.'),
-              backgroundColor: Colors.green,
-            ),
-          );
-          Navigator.pop(context);
-        }
-      } catch (e) {
+    if (!_formKey.currentState!.validate()) return;
+    setState(() => _isLoading = true);
+    try {
+      await _authService.resetPassword(_emailController.text.trim());
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${e.toString()}'), backgroundColor: Colors.red),
+          const SnackBar(content: Text('Enlace enviado a tu correo'), backgroundColor: Colors.green),
         );
-      } finally {
-        setState(() => _isLoading = false);
+        Navigator.pop(context);
       }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Recuperar contraseña'),
-        backgroundColor: Colors.white,
-        foregroundColor: const Color(0xFF1A237E),
-        elevation: 0,
-      ),
+      appBar: AppBar(title: const Text('Recuperar contraseña')),
       body: Padding(
-        padding: const EdgeInsets.all(24.0),
+        padding: const EdgeInsets.all(24),
         child: Form(
           key: _formKey,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              const Text('Ingresa tu correo para restablecer la contraseña.'),
               const SizedBox(height: 20),
-              Text(
-                'Ingresa tu correo electrónico y te enviaremos un enlace para restablecer tu contraseña.',
-                style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
-              ),
-              const SizedBox(height: 30),
               TextFormField(
                 controller: _emailController,
-                keyboardType: TextInputType.emailAddress,
-                decoration: const InputDecoration(
-                  labelText: 'Correo electrónico',
-                  prefixIcon: Icon(Icons.email_outlined),
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) return 'Ingresa tu correo';
-                  if (!value.contains('@')) return 'Correo inválido';
-                  return null;
-                },
+                decoration: const InputDecoration(labelText: 'Correo electrónico', prefixIcon: Icon(Icons.email_outlined)),
+                validator: (v) => (v == null || v.isEmpty) ? 'Ingresa tu correo' : (!v.contains('@') ? 'Correo inválido' : null),
               ),
               const SizedBox(height: 30),
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: _isLoading ? null : _resetPassword,
-                  child: _isLoading
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text('Enviar enlace'),
+                  child: _isLoading ? const CircularProgressIndicator() : const Text('Enviar enlace'),
                 ),
               ),
             ],

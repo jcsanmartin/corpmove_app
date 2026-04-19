@@ -1,72 +1,157 @@
-import 'dart:math';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:corpmove_app/core/utils/user_role.dart';
 
 class AuthService {
-  static final AuthService _instance = AuthService._internal();
-  factory AuthService() => _instance;
-  AuthService._internal();
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final GoogleSignIn _googleSignIn = GoogleSignIn();
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  /// Simula registro con email/password
-  Future<Map<String, dynamic>> signUpWithEmail({
+  Stream<User?> get user => _auth.authStateChanges();
+  User? get currentUser => _auth.currentUser;
+  String? get uid => _auth.currentUser?.uid;
+
+  Future<User?> signInWithGoogle() async {
+    try {
+      final googleUser = await _googleSignIn.signIn();
+      if (googleUser == null) return null;
+      final googleAuth = await googleUser.authentication;
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+      final userCredential = await _auth.signInWithCredential(credential);
+      final user = userCredential.user;
+      if (user != null) {
+        await _saveUserToFirestore(user);
+      }
+      return user;
+    } catch (e) {
+      throw Exception('Error en Google Sign-In: $e');
+    }
+  }
+
+  Future<User?> signUpWithEmail({
     required String name,
     required String email,
     required String password,
   }) async {
-    await Future.delayed(const Duration(seconds: 2));
-    // Simular creación de usuario
-    final role = _getRoleFromEmail(email);
-    return {
-      'id': 'usr_${Random().nextInt(999999)}',
-      'name': name,
-      'email': email,
-      'role': role,
-    };
+    try {
+      final userCredential = await _auth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      final user = userCredential.user;
+      if (user != null) {
+        await user.updateDisplayName(name);
+        await _saveUserToFirestore(user, name: name);
+      }
+      return user;
+    } catch (e) {
+      throw Exception('Error en registro: $e');
+    }
   }
 
-  /// Simula inicio de sesión con email/password
-  Future<Map<String, dynamic>> signInWithEmail({
+  Future<User?> signInWithEmail({
     required String email,
     required String password,
   }) async {
-    await Future.delayed(const Duration(seconds: 1));
-    // Validación simulada
-    if (password.length < 6) {
-      throw Exception('Contraseña incorrecta');
+    try {
+      final userCredential = await _auth.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      return userCredential.user;
+    } catch (e) {
+      throw Exception('Error en login: $e');
     }
-    final role = _getRoleFromEmail(email);
-    return {
-      'id': 'usr_${email.hashCode}',
-      'name': email.split('@').first,
-      'email': email,
-      'role': role,
-    };
   }
 
-  /// Simula autenticación con Google
-  Future<Map<String, dynamic>> signInWithGoogle() async {
-    await Future.delayed(const Duration(seconds: 2));
-    // Simular datos de Google
-    const email = 'usuario@gmail.com';
-    final role = _getRoleFromEmail(email);
-    return {
-      'id': 'google_${Random().nextInt(999999)}',
-      'name': 'Usuario Google',
-      'email': email,
-      'photoURL': 'https://i.pravatar.cc/150?img=7',
-      'role': role,
-    };
-  }
-
-  /// Simula restablecimiento de contraseña
-  Future<void> resetPassword(String email) async {
-    await Future.delayed(const Duration(seconds: 2));
-    // Simulación exitosa
-  }
-
-  /// Cerrar sesión
   Future<void> signOut() async {
-    await Future.delayed(const Duration(milliseconds: 500));
+    await _googleSignIn.signOut();
+    await _auth.signOut();
   }
+
+  Future<void> resetPassword(String email) async {
+    await _auth.sendPasswordResetEmail(email: email);
+  }
+
+  Future<void> _saveUserToFirestore(User user, {String? name}) async {
+    final userRef = _firestore.collection('users').doc(user.uid);
+    final doc = await userRef.get();
+    if (!doc.exists) {
+      final role = _getRoleFromEmail(user.email ?? '');
+      await userRef.set({
+        'uid': user.uid,
+        'email': user.email,
+        'displayName': name ?? user.displayName ?? user.email?.split('@').first,
+        'photoURL': user.photoURL,
+        'role': role.name,
+        'estado_solicitud': 'ninguno',
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+    }
+  }
+
+  Future<UserRole> getUserRole(String uid) async {
+    final doc = await _firestore.collection('users').doc(uid).get();
+    if (doc.exists) {
+      final roleStr = doc.data()?['role'] as String? ?? 'normal';
+      return _roleFromString(roleStr);
+    }
+    return UserRole.normal;
+  }
+
+  Future<UserRole> getCurrentUserRole() async {
+    final user = _auth.currentUser;
+    if (user == null) return UserRole.normal;
+    return getUserRole(user.uid);
+  }
+
+  Future<DocumentSnapshot> getCurrentUserDoc() async {
+    final user = _auth.currentUser;
+    if (user == null) throw Exception('No hay usuario autenticado');
+    return await _firestore.collection('users').doc(user.uid).get();
+  }
+
+  Future<void> solicitarCambioRol({
+    required UserRole rolSolicitado,
+    required Map<String, dynamic> datosAdicionales,
+  }) async {
+    final user = _auth.currentUser;
+    if (user == null) throw Exception('No hay usuario autenticado');
+    await _firestore.collection('users').doc(user.uid).update({
+      'rol_solicitado': rolSolicitado.name,
+      'estado_solicitud': 'pendiente',
+      'fecha_solicitud': FieldValue.serverTimestamp(),
+      ...datosAdicionales,
+    });
+  }
+
+  Stream<QuerySnapshot> getSolicitudesPendientes() {
+    return _firestore
+        .collection('users')
+        .where('estado_solicitud', isEqualTo: 'pendiente')
+        .snapshots();
+  }
+
+  Future<void> aprobarSolicitud(String uid, UserRole nuevoRol) async {
+    await _firestore.collection('users').doc(uid).update({
+      'role': nuevoRol.name,
+      'estado_solicitud': 'aprobado',
+      'rol_solicitado': FieldValue.delete(),
+    });
+  }
+
+  Future<void> rechazarSolicitud(String uid, {String? motivo}) async {
+    await _firestore.collection('users').doc(uid).update({
+      'estado_solicitud': 'rechazado',
+      'motivo_rechazo': motivo ?? 'No especificado',
+    });
+  }
+
+  UserRole getRoleFromEmail(String email) => _getRoleFromEmail(email);
 
   UserRole _getRoleFromEmail(String email) {
     final lower = email.toLowerCase();
@@ -80,6 +165,16 @@ class AuthService {
       return UserRole.employee;
     } else {
       return UserRole.normal;
+    }
+  }
+
+  UserRole _roleFromString(String role) {
+    switch (role) {
+      case 'owner': return UserRole.owner;
+      case 'admin': return UserRole.admin;
+      case 'driver': return UserRole.driver;
+      case 'employee': return UserRole.employee;
+      default: return UserRole.normal;
     }
   }
 }

@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:corpmove_app/core/services/auth_service.dart';
 import 'package:corpmove_app/core/utils/user_role.dart';
@@ -26,8 +27,7 @@ class _LoginFormState extends State<LoginForm> {
   @override
   void initState() {
     super.initState();
-    // Credenciales de prueba pre-llenadas para facilitar demostración
-    _emailController.text = 'empleado@corpmove.com';
+    _emailController.text = 'admin@empresa.com';
     _passwordController.text = '123456';
   }
 
@@ -42,22 +42,21 @@ class _LoginFormState extends State<LoginForm> {
     if (_formKey.currentState!.validate()) {
       setState(() => _isLoading = true);
       try {
-        final userData = await _authService.signInWithEmail(
+        final user = await _authService.signInWithEmail(
           email: _emailController.text.trim(),
           password: _passwordController.text,
         );
-        if (mounted) {
-          _navigateToRole(userData['role'] as UserRole);
+        if (user != null) {
+          await _navigateBasedOnRole(user.uid);
         }
+      } on FirebaseAuthException catch (e) {
+        String message = 'Error al iniciar sesión';
+        if (e.code == 'user-not-found') message = 'No existe usuario con este correo';
+        else if (e.code == 'wrong-password') message = 'Contraseña incorrecta';
+        else if (e.code == 'invalid-email') message = 'Correo inválido';
+        _showError(message);
       } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Error: ${e.toString()}'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
+        _showError('Error: ${e.toString()}');
       } finally {
         if (mounted) setState(() => _isLoading = false);
       }
@@ -67,25 +66,21 @@ class _LoginFormState extends State<LoginForm> {
   Future<void> _signInWithGoogle() async {
     setState(() => _isGoogleLoading = true);
     try {
-      final userData = await _authService.signInWithGoogle();
-      if (mounted) {
-        _navigateToRole(userData['role'] as UserRole);
+      final user = await _authService.signInWithGoogle();
+      if (user != null) {
+        await _navigateBasedOnRole(user.uid);
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error con Google: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      _showError('Error con Google: ${e.toString()}');
     } finally {
       if (mounted) setState(() => _isGoogleLoading = false);
     }
   }
 
-  void _navigateToRole(UserRole role) {
+  Future<void> _navigateBasedOnRole(String uid) async {
+    final role = await _authService.getUserRole(uid);
+    debugPrint('═══ LOGIN: UID $uid → Rol $role ═══');
+
     Widget screen;
     switch (role) {
       case UserRole.owner:
@@ -103,11 +98,21 @@ class _LoginFormState extends State<LoginForm> {
       case UserRole.normal:
         screen = const PassengerHomeScreen(isCorporateEnabled: false);
         break;
+      default:
+        screen = const PassengerHomeScreen(isCorporateEnabled: false);
     }
 
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (_) => screen),
+    if (mounted) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => screen),
+      );
+    }
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: Colors.red),
     );
   }
 
@@ -126,15 +131,7 @@ class _LoginFormState extends State<LoginForm> {
               labelText: 'Correo electrónico',
               prefixIcon: Icon(Icons.email_outlined),
             ),
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'Ingresa tu correo';
-              }
-              if (!value.contains('@')) {
-                return 'Correo inválido';
-              }
-              return null;
-            },
+            validator: (v) => (v == null || v.isEmpty) ? 'Ingresa tu correo' : (!v.contains('@') ? 'Correo inválido' : null),
           ),
           const SizedBox(height: 20),
           TextFormField(
@@ -145,21 +142,11 @@ class _LoginFormState extends State<LoginForm> {
               labelText: 'Contraseña',
               prefixIcon: const Icon(Icons.lock_outline),
               suffixIcon: IconButton(
-                icon: Icon(
-                  _isPasswordVisible ? Icons.visibility_off : Icons.visibility,
-                ),
+                icon: Icon(_isPasswordVisible ? Icons.visibility_off : Icons.visibility),
                 onPressed: isLoading ? null : () => setState(() => _isPasswordVisible = !_isPasswordVisible),
               ),
             ),
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'Ingresa tu contraseña';
-              }
-              if (value.length < 6) {
-                return 'Mínimo 6 caracteres';
-              }
-              return null;
-            },
+            validator: (v) => (v == null || v.isEmpty) ? 'Ingresa tu contraseña' : (v.length < 6 ? 'Mínimo 6 caracteres' : null),
           ),
           const SizedBox(height: 30),
           SizedBox(
@@ -167,18 +154,8 @@ class _LoginFormState extends State<LoginForm> {
             child: ElevatedButton(
               onPressed: isLoading ? null : _login,
               child: _isLoading
-                  ? const SizedBox(
-                      width: 24,
-                      height: 24,
-                      child: CircularProgressIndicator(
-                        color: Colors.white,
-                        strokeWidth: 2.5,
-                      ),
-                    )
-                  : const Text(
-                      'Iniciar Sesión',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-                    ),
+                  ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
+                  : const Text('Iniciar Sesión', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
             ),
           ),
           const SizedBox(height: 15),
@@ -189,16 +166,8 @@ class _LoginFormState extends State<LoginForm> {
             child: OutlinedButton.icon(
               onPressed: isLoading ? null : _signInWithGoogle,
               icon: _isGoogleLoading
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2.5),
-                    )
-                  : Image.network(
-                      'https://img.icons8.com/color/48/000000/google-logo.png',
-                      width: 24,
-                      height: 24,
-                    ),
+                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2.5))
+                  : Image.network('https://img.icons8.com/color/48/000000/google-logo.png', width: 24, height: 24),
               label: const Text('Google'),
               style: OutlinedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 14),
@@ -208,10 +177,7 @@ class _LoginFormState extends State<LoginForm> {
             ),
           ),
           const SizedBox(height: 20),
-          const Text(
-            'Credenciales de prueba:',
-            style: TextStyle(color: Colors.grey, fontSize: 13),
-          ),
+          const Text('Credenciales de prueba:', style: TextStyle(color: Colors.grey, fontSize: 13)),
           const SizedBox(height: 5),
           const Text(
             '👤 Normal: usuario@email.com\n'
