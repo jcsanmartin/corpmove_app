@@ -73,4 +73,5 @@ class CorpMoveApp extends StatelessWidget {
       home: const SplashScreen(), // ← Inicia en Splash
     );
   }
+  
 }

@@ -1,7 +1,14 @@
 import 'package:flutter/material.dart';
 
 class NegotiationRadarScreen extends StatelessWidget {
-  const NegotiationRadarScreen({super.key});
+  final bool isCorporateMode;
+  final double techoCobertura;
+
+  const NegotiationRadarScreen({
+    super.key,
+    required this.isCorporateMode,
+    required this.techoCobertura,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -29,16 +36,20 @@ class NegotiationRadarScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 16),
-                const Expanded(
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         'Conductores cercanos',
-                        style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF1A237E)),
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: isCorporateMode ? const Color(0xFF1A237E) : const Color(0xFFFF6D00),
+                        ),
                       ),
-                      SizedBox(height: 4),
-                      Row(
+                      const SizedBox(height: 4),
+                      const Row(
                         children: [
                           Icon(Icons.location_on, size: 16, color: Colors.grey),
                           SizedBox(width: 4),
@@ -66,7 +77,10 @@ class NegotiationRadarScreen extends StatelessWidget {
                 const SizedBox(
                   width: 20,
                   height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2.5, valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFFF6D00))),
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.5,
+                    valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFFF6D00)),
+                  ),
                 ),
                 const SizedBox(width: 12),
                 const Text('Buscando las mejores ofertas...', style: TextStyle(fontWeight: FontWeight.w500)),
@@ -95,6 +109,8 @@ class NegotiationRadarScreen extends StatelessWidget {
                   arrival: '3 min',
                   offerAmount: 18000,
                   isRecommended: true,
+                  isCorporateMode: isCorporateMode,
+                  techoCobertura: techoCobertura,
                 ),
                 const SizedBox(height: 16),
                 _buildOfferCard(
@@ -104,6 +120,8 @@ class NegotiationRadarScreen extends StatelessWidget {
                   vehicle: 'Renault Logan - XYZ789',
                   arrival: '5 min',
                   offerAmount: 22000,
+                  isCorporateMode: isCorporateMode,
+                  techoCobertura: techoCobertura,
                 ),
                 const SizedBox(height: 16),
                 _buildOfferCard(
@@ -113,6 +131,8 @@ class NegotiationRadarScreen extends StatelessWidget {
                   vehicle: 'Kia Picanto - ABC123',
                   arrival: '7 min',
                   offerAmount: 12000,
+                  isCorporateMode: isCorporateMode,
+                  techoCobertura: techoCobertura,
                 ),
               ],
             ),
@@ -129,12 +149,16 @@ class NegotiationRadarScreen extends StatelessWidget {
     required String vehicle,
     required String arrival,
     required double offerAmount,
+    required bool isCorporateMode,
+    required double techoCobertura,
     bool isRecommended = false,
   }) {
-    const double techoCorporativo = 15000.0;
-    final bool superaTecho = offerAmount > techoCorporativo;
-    final double pagaEmpresa = superaTecho ? techoCorporativo : offerAmount;
-    final double excedente = superaTecho ? offerAmount - techoCorporativo : 0;
+    final bool superaTecho = isCorporateMode && (offerAmount > techoCobertura);
+    final double pagaEmpresa = isCorporateMode
+        ? (superaTecho ? techoCobertura : offerAmount)
+        : 0.0;
+    final double excedente = isCorporateMode && superaTecho ? offerAmount - techoCobertura : 0.0;
+    final double pagaUsuario = isCorporateMode ? excedente : offerAmount;
 
     return Container(
       decoration: BoxDecoration(
@@ -238,51 +262,78 @@ class NegotiationRadarScreen extends StatelessWidget {
                           const Text('Tarifa total', style: TextStyle(fontSize: 16)),
                           Text(
                             '\$${offerAmount.toStringAsFixed(0)}',
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 22, color: Color(0xFF1A237E)),
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 22,
+                              color: isCorporateMode ? const Color(0xFF1A237E) : const Color(0xFFFF6D00),
+                            ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 12),
-                      const Divider(),
-                      const SizedBox(height: 12),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Row(
-                            children: [
-                              Icon(Icons.business, size: 18, color: Color(0xFF1A237E)),
-                              SizedBox(width: 6),
-                              Text('Cubre CorpMove'),
-                            ],
-                          ),
-                          Text(
-                            '\$${pagaEmpresa.toStringAsFixed(0)}',
-                            style: const TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF1A237E), fontSize: 16),
-                          ),
-                        ],
-                      ),
-                      if (superaTecho) ...[
-                        const SizedBox(height: 10),
+                      if (isCorporateMode) ...[
+                        const SizedBox(height: 12),
+                        const Divider(),
+                        const SizedBox(height: 12),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             const Row(
                               children: [
-                                Icon(Icons.credit_card, size: 18, color: Colors.orange),
+                                Icon(Icons.business, size: 18, color: Color(0xFF1A237E)),
                                 SizedBox(width: 6),
-                                Text('Excedente (tú pagas)'),
+                                Text('Cubre CorpMove'),
                               ],
                             ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: Colors.orange.shade50,
-                                borderRadius: BorderRadius.circular(20),
+                            Text(
+                              '\$${pagaEmpresa.toStringAsFixed(0)}',
+                              style: const TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF1A237E), fontSize: 16),
+                            ),
+                          ],
+                        ),
+                        if (superaTecho) ...[
+                          const SizedBox(height: 10),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Row(
+                                children: [
+                                  Icon(Icons.credit_card, size: 18, color: Colors.orange),
+                                  SizedBox(width: 6),
+                                  Text('Excedente (tú pagas)'),
+                                ],
                               ),
-                              child: Text(
-                                '\$${excedente.toStringAsFixed(0)}',
-                                style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.orange),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: Colors.orange.shade50,
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Text(
+                                  '\$${excedente.toStringAsFixed(0)}',
+                                  style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.orange),
+                                ),
                               ),
+                            ],
+                          ),
+                        ],
+                      ] else ...[
+                        // Modo personal: mensaje simple
+                        const SizedBox(height: 12),
+                        const Divider(),
+                        const SizedBox(height: 12),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Row(
+                              children: [
+                                Icon(Icons.person, size: 18, color: Colors.grey),
+                                SizedBox(width: 6),
+                                Text('Tú pagas'),
+                              ],
+                            ),
+                            Text(
+                              '\$${offerAmount.toStringAsFixed(0)}',
+                              style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.grey, fontSize: 16),
                             ),
                           ],
                         ),
@@ -315,8 +366,10 @@ class NegotiationRadarScreen extends StatelessWidget {
                       child: ElevatedButton.icon(
                         onPressed: () {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('✅ Viaje aceptado. Conductor en camino.'),
+                            SnackBar(
+                              content: Text(isCorporateMode
+                                  ? '✅ Viaje corporativo aceptado. Conductor en camino.'
+                                  : '✅ Viaje personal aceptado. Conductor en camino.'),
                               backgroundColor: Colors.green,
                             ),
                           );
@@ -324,7 +377,7 @@ class NegotiationRadarScreen extends StatelessWidget {
                         icon: const Icon(Icons.check_circle, size: 20),
                         label: const Text('Aceptar'),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFFF6D00),
+                          backgroundColor: isCorporateMode ? const Color(0xFFFF6D00) : const Color(0xFF1A237E),
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),

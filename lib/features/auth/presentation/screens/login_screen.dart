@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:corpmove_app/features/auth/presentation/widgets/login_form.dart';
+import 'package:corpmove_app/features/auth/presentation/screens/sign_up_screen.dart';
+import 'package:corpmove_app/features/auth/presentation/screens/forgot_password_screen.dart';
 
 class LoginScreen extends StatelessWidget {
   const LoginScreen({super.key});
@@ -14,7 +16,6 @@ class LoginScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 40),
-              // Logo pequeño
               Center(
                 child: Container(
                   width: 80,
@@ -60,20 +61,30 @@ class LoginScreen extends StatelessWidget {
                   ),
                   TextButton(
                     onPressed: () {
-                      // Aquí iría navegación a registro
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Función de registro en desarrollo')),
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const SignUpScreen()),
                       );
                     },
                     child: const Text(
                       'Regístrate',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFFFF6D00),
-                      ),
+                      style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFFF6D00)),
                     ),
                   ),
                 ],
+              ),
+              const SizedBox(height: 10),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const ForgotPasswordScreen()),
+                    );
+                  },
+                  child: const Text('¿Olvidaste tu contraseña?'),
+                ),
               ),
             ],
           ),
