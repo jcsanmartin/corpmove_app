@@ -3,7 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:corpmove_app/core/services/auth_service.dart';
 import 'package:corpmove_app/core/utils/user_role.dart';
-
+import 'package:corpmove_app/features/trip_passenger/presentation/widgets/corporate_request_dialog.dart';
 class ProfileTab extends StatefulWidget {
   const ProfileTab({super.key});
 
@@ -46,20 +46,31 @@ class _ProfileTabState extends State<ProfileTab> {
   }
 
   Future<void> _solicitarCorporativo() async {
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const CorporateRequestDialog(),
+    );
+
+    if (result == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('✅ Solicitud corporativa enviada.'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    }
+  }
+
+  Future<void> _cancelarSolicitud() async {
     setState(() => _isLoading = true);
     try {
-      await _authService.solicitarCambioRol(
-        rolSolicitado: UserRole.employee,
-        datosAdicionales: {
-          'notas': 'Solicitud de afiliación corporativa',
-          'empresa': '',
-        },
-      );
+      await _authService.cancelarSolicitud();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('✅ Solicitud corporativa enviada.'),
-            backgroundColor: Colors.green,
+            content: Text('Solicitud cancelada.'),
+            backgroundColor: Colors.orange,
           ),
         );
       }
@@ -207,6 +218,14 @@ class _ProfileTabState extends State<ProfileTab> {
                   color: Colors.orange,
                   title: 'Solicitud en revisión',
                   subtitle: 'Tu solicitud está siendo evaluada por el equipo de CorpMove.',
+                ),
+                const SizedBox(height: 12),
+                Center(
+                  child: TextButton.icon(
+                    onPressed: _isLoading ? null : _cancelarSolicitud,
+                    icon: const Icon(Icons.cancel, color: Colors.red),
+                    label: const Text('Cancelar solicitud', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                  ),
                 ),
                 const SizedBox(height: 20),
               ] else if (estadoSolicitud == 'rechazado') ...[

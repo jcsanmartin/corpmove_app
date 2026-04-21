@@ -1,0 +1,249 @@
+import 'dart:typed_data';
+import 'package:corpmove_app/core/services/supabase_service.dart';
+import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+class AdminRepository {
+  final SupabaseClient _db = SupabaseService.client;
+
+  // ─────────────────────────────────────────────
+  // EMPRESA
+  // ─────────────────────────────────────────────
+
+  /// Stream en tiempo real de la configuración de la empresa.
+  Stream<Map<String, dynamic>?> streamCompanyConfig(String companyId) {
+    return _db
+        .from('companies')
+        .stream(primaryKey: ['id'])
+        .eq('id', companyId)
+        .map((rows) {
+          if (rows.isEmpty) {
+            debugPrint('[Supabase] No se encontró la empresa $companyId');
+            return null;
+          }
+          return rows.first;
+        });
+  }
+
+  /// Stream en tiempo real de los empleados de una empresa.
+  Stream<List<Map<String, dynamic>>> streamCompanyEmployees(String companyId) {
+    return _db
+        .from('users')
+        .stream(primaryKey: ['id'])
+        .eq('company_id', companyId)
+        .map((rows) => rows);
+  }
+
+  /// Obtener el company_id del usuario actual (por firebase_uid).
+  Future<String?> getUserCompanyId(String firebaseUid) async {
+    try {
+      final response = await _db
+          .from('users')
+          .select('company_id')
+          .eq('firebase_uid', firebaseUid)
+          .maybeSingle();
+      return response?['company_id'] as String?;
+    } catch (e) {
+      debugPrint('[Supabase] Error al obtener company_id: $e');
+      return null;
+    }
+  }
+
+  /// Actualizar cualquier campo de la tabla companies.
+  Future<void> updateConfig(String companyId, String field, dynamic value) async {
+    try {
+      await _db
+          .from('companies')
+          .update({field: value})
+          .eq('id', companyId);
+
+      // Si actualizamos corporate_limit, propagamos a todos los empleados
+      if (field == 'corporate_limit') {
+        await _db
+            .from('users')
+            .update({'corporate_limit': value})
+            .eq('company_id', companyId);
+      }
+    } catch (e) {
+      debugPrint('[Supabase] Error al actualizar $field: $e');
+      throw Exception('Error al actualizar $field: $e');
+    }
+  }
+
+  /// Crear una nueva empresa y asignarla al usuario administrador.
+  Future<String> createCompany(String companyName, String firebaseUid) async {
+    try {
+      // 1. Crear la empresa
+      final result = await _db
+          .from('companies')
+          .insert({
+            'company_name': companyName,
+            'corporate_limit': 0,
+            'daily_trips_limit': 2,
+            'allowed_schedules': ['06:00 - 22:00'],
+          })
+          .select('id')
+          .single();
+
+      final companyId = result['id'] as String;
+
+      // 2. Upsert del usuario: si no existe en Supabase lo crea, si ya existe lo actualiza
+      await _db.from('users').upsert({
+        'firebase_uid': firebaseUid,
+        'company_id': companyId,
+        'role': 'admin',
+        'estado_solicitud': 'ninguno',
+      }, onConflict: 'firebase_uid');
+
+      debugPrint('[Supabase] Empresa creada: $companyId y usuario vinculado.');
+      return companyId;
+    } catch (e) {
+      debugPrint('[Supabase] Error al crear empresa: $e');
+      throw Exception('Error al crear empresa: $e');
+    }
+  }
+
+  // ─────────────────────────────────────────────
+  // EMPLEADOS
+  // ─────────────────────────────────────────────
+
+  /// Cambiar estado activo/inactivo de un empleado.
+  Future<void> updateEmployeeStatus(String userId, bool isActive) async {
+    try {
+      await _db
+          .from('users')
+          .update({'is_active': isActive})
+          .eq('id', userId);
+    } catch (e) {
+      throw Exception('Error al actualizar estado: $e');
+    }
+  }
+
+  /// Agregar empleado manualmente (pre-aprobado por el admin).
+  Future<void> addEmployee(String companyId, String name, String email) async {
+    try {
+      await _db.from('users').insert({
+        'name': name,
+        'email': email,
+        'company_id': companyId,
+        'is_active': true,
+        'estado_solicitud': 'aprobado',
+        'role': 'employee',
+      });
+    } catch (e) {
+      throw Exception('Error al agregar empleado: $e');
+    }
+  }
+
+  /// Editar nombre y correo de un empleado.
+  Future<void> updateEmployeeInfo(String userId, String name, String email) async {
+    try {
+      await _db
+          .from('users')
+          .update({'name': name, 'email': email})
+          .eq('id', userId);
+    } catch (e) {
+      throw Exception('Error al editar empleado: $e');
+    }
+  }
+
+  /// Eliminar (desvincular) a un empleado.
+  Future<void> deleteEmployee(String userId) async {
+    try {
+      await _db.from('users').delete().eq('id', userId);
+    } catch (e) {
+      throw Exception('Error al eliminar empleado: $e');
+    }
+  }
+
+  /// Aprobar solicitud de afiliación corporativa.
+  Future<void> approveRequest(String userId) async {
+    try {
+      await _db.from('users').update({
+        'role': 'employee',
+        'estado_solicitud': 'aprobado',
+        'is_active': true,
+        'rol_solicitado': null,
+      }).eq('id', userId);
+    } catch (e) {
+      throw Exception('Error al aprobar solicitud: $e');
+    }
+  }
+
+  /// Rechazar solicitud de afiliación corporativa.
+  Future<void> rejectRequest(String userId) async {
+    try {
+      await _db.from('users').update({
+        'estado_solicitud': 'rechazado',
+        'company_id': null,
+      }).eq('id', userId);
+    } catch (e) {
+      throw Exception('Error al rechazar solicitud: $e');
+    }
+  }
+
+  // ─────────────────────────────────────────────
+  // USUARIO (sincronización Firebase UID → Supabase)
+  // ─────────────────────────────────────────────
+
+  /// Crear o actualizar el perfil del usuario en Supabase usando su Firebase UID.
+  Future<void> upsertUser({
+    required String firebaseUid,
+    required String email,
+    String? displayName,
+    String? photoUrl,
+    String role = 'normal',
+  }) async {
+    try {
+      await _db.from('users').upsert({
+        'firebase_uid': firebaseUid,
+        'email': email,
+        'display_name': displayName,
+        'photo_url': photoUrl,
+        'role': role,
+        'estado_solicitud': 'ninguno',
+      }, onConflict: 'firebase_uid');
+    } catch (e) {
+      debugPrint('[Supabase] Error al upsert usuario: $e');
+    }
+  }
+
+  /// Obtener el perfil completo del usuario por firebase_uid.
+  Future<Map<String, dynamic>?> getUserProfile(String firebaseUid) async {
+    try {
+      return await _db
+          .from('users')
+          .select()
+          .eq('firebase_uid', firebaseUid)
+          .maybeSingle();
+    } catch (e) {
+      debugPrint('[Supabase] Error al obtener perfil: $e');
+      return null;
+    }
+  }
+
+  // ─────────────────────────────────────────────
+  // STORAGE — Subida de imágenes
+  // ─────────────────────────────────────────────
+
+  /// Subir foto de perfil al bucket 'avatars' de Supabase Storage.
+  /// Retorna la URL pública del archivo.
+  Future<String?> uploadProfilePhoto(String userId, Uint8List bytes, {String extension = 'jpg'}) async {
+    try {
+      final path = 'avatars/$userId.$extension';
+      await _db.storage
+          .from('profile-photos')
+          .uploadBinary(
+            path,
+            bytes,
+            fileOptions: FileOptions(contentType: 'image/$extension', upsert: true),
+          );
+      final url = _db.storage.from('profile-photos').getPublicUrl(path);
+      debugPrint('[Supabase Storage] Imagen subida: $url');
+      return url;
+    } catch (e) {
+      debugPrint('[Supabase Storage] Error subiendo imagen: $e');
+      return null;
+    }
+  }
+}

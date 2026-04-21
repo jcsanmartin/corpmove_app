@@ -1,14 +1,18 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:corpmove_app/core/services/supabase_service.dart';
 import 'package:corpmove_app/features/splash/presentation/screens/splash_screen.dart';
 import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Firebase sólo para Auth (login, Google Sign-In)
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  // Supabase para base de datos y storage
+  await SupabaseService.initialize();
   runApp(const CorpMoveApp());
 }
 

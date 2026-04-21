@@ -20,14 +20,19 @@ dependencies:
   get_it: ^7.6.0
   provider: ^6.1.2  # Agregado según tu solicitud
 
-  # --- Backend & Base de Datos (Firebase) ---
+  # --- Backend & Base de Datos (Firebase - Auth) ---
   firebase_core: ^3.10.1
-  firebase_auth: ^5.4.1      # Agregado para el Login
-  cloud_firestore: ^5.6.2    # Actualizado a la versión que pediste
-  google_sign_in: ^6.2.2     # Agregado para Login con Google
+  firebase_auth: ^5.4.1      # Autenticación (mantener)
+  cloud_firestore: ^5.6.2    # Solo para auth/rol de usuarios en migración
+  google_sign_in: ^6.2.2     # Login con Google
+
+  # --- Backend & Base de Datos (Supabase - Datos + Storage) ---
+  supabase_flutter: ^2.8.4
 
   # --- Servicios de Mapas ---
   google_maps_flutter: ^2.10.0
+  firebase_storage: ^12.4.10
+  image_picker: ^1.2.1
 
 dev_dependencies:
   flutter_test:

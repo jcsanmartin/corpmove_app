@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:corpmove_app/core/utils/user_role.dart';
+import 'package:corpmove_app/features/admin/data/admin_repository.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -25,6 +26,13 @@ class AuthService {
       final user = userCredential.user;
       if (user != null) {
         await _saveUserToFirestore(user);
+        // Sincronizar con Supabase
+        await AdminRepository().upsertUser(
+          firebaseUid: user.uid,
+          email: user.email ?? '',
+          displayName: user.displayName,
+          photoUrl: user.photoURL,
+        );
       }
       return user;
     } catch (e) {
@@ -46,6 +54,12 @@ class AuthService {
       if (user != null) {
         await user.updateDisplayName(name);
         await _saveUserToFirestore(user, name: name);
+        // Sincronizar con Supabase
+        await AdminRepository().upsertUser(
+          firebaseUid: user.uid,
+          email: email,
+          displayName: name,
+        );
       }
       return user;
     } catch (e) {
@@ -62,7 +76,17 @@ class AuthService {
         email: email,
         password: password,
       );
-      return userCredential.user;
+      final user = userCredential.user;
+      if (user != null) {
+        // Sincronizar con Supabase en cada login
+        await AdminRepository().upsertUser(
+          firebaseUid: user.uid,
+          email: user.email ?? '',
+          displayName: user.displayName,
+          photoUrl: user.photoURL,
+        );
+      }
+      return user;
     } catch (e) {
       throw Exception('Error en login: $e');
     }
@@ -134,6 +158,24 @@ class AuthService {
         .collection('users')
         .where('estado_solicitud', isEqualTo: 'pendiente')
         .snapshots();
+  }
+
+  Future<void> cancelarSolicitud() async {
+    final user = _auth.currentUser;
+    if (user == null) throw Exception('No hay usuario autenticado');
+    await _firestore.collection('users').doc(user.uid).update({
+      'estado_solicitud': 'ninguno',
+      'rol_solicitado': FieldValue.delete(),
+      'fecha_solicitud': FieldValue.delete(),
+      'motivo_rechazo': FieldValue.delete(),
+      'company_id': FieldValue.delete(),
+      'company_name': FieldValue.delete(),
+      'full_name': FieldValue.delete(),
+      'phone': FieldValue.delete(),
+      'position': FieldValue.delete(),
+      'photo_url': FieldValue.delete(),
+      'notas': FieldValue.delete(),
+    });
   }
 
   Future<void> aprobarSolicitud(String uid, UserRole nuevoRol) async {
