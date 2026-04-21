@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:corpmove_app/core/utils/user_role.dart';
 import 'package:corpmove_app/features/admin/data/admin_repository.dart';
@@ -118,13 +119,17 @@ class AuthService {
     }
   }
 
+  /// Lee el rol del usuario desde Supabase (fuente de verdad única para roles).
   Future<UserRole> getUserRole(String uid) async {
-    final doc = await _firestore.collection('users').doc(uid).get();
-    if (doc.exists) {
-      final roleStr = doc.data()?['role'] as String? ?? 'normal';
+    try {
+      final profile = await AdminRepository().getUserProfile(uid);
+      final roleStr = profile?['role'] as String? ?? 'normal';
+      debugPrint('═══ ROL desde Supabase: $roleStr ═══');
       return _roleFromString(roleStr);
+    } catch (e) {
+      debugPrint('[AuthService] Error leyendo rol de Supabase: $e');
+      return UserRole.normal;
     }
-    return UserRole.normal;
   }
 
   Future<UserRole> getCurrentUserRole() async {
@@ -145,12 +150,47 @@ class AuthService {
   }) async {
     final user = _auth.currentUser;
     if (user == null) throw Exception('No hay usuario autenticado');
+
+    // 1. Actualizar en Firestore (Compatibilidad temporal)
     await _firestore.collection('users').doc(user.uid).update({
       'rol_solicitado': rolSolicitado.name,
       'estado_solicitud': 'pendiente',
       'fecha_solicitud': FieldValue.serverTimestamp(),
       ...datosAdicionales,
     });
+
+    // 2. Actualizar en Supabase (Fuente de verdad para el nuevo Panel Admin)
+    final repo = AdminRepository();
+    await repo.syncUserProfile(
+      firebaseUid: user.uid,
+      email: user.email ?? '',
+      displayName: user.displayName,
+      photoUrl: user.photoURL,
+    );
+
+    // Actualizar campos específicos de la solicitud en Supabase
+    await SupabaseService.client.from('users').update({
+      'rol_solicitado': rolSolicitado.name,
+      'estado_solicitud': 'pendiente',
+      ...datosAdicionales,
+    }).eq('firebase_uid', user.uid);
+  }
+
+  Future<void> cancelarSolicitud() async {
+    final user = _auth.currentUser;
+    if (user == null) return;
+
+    // Firestore
+    await _firestore.collection('users').doc(user.uid).update({
+      'estado_solicitud': 'ninguno',
+      'rol_solicitado': FieldValue.delete(),
+    });
+
+    // Supabase
+    await SupabaseService.client.from('users').update({
+      'estado_solicitud': 'ninguno',
+      'rol_solicitado': null,
+    }).eq('firebase_uid', user.uid);
   }
 
   Stream<QuerySnapshot> getSolicitudesPendientes() {

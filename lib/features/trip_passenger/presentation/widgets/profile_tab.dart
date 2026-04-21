@@ -3,7 +3,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:corpmove_app/core/services/auth_service.dart';
 import 'package:corpmove_app/core/utils/user_role.dart';
+import 'package:corpmove_app/features/admin/data/admin_repository.dart';
 import 'package:corpmove_app/features/trip_passenger/presentation/widgets/corporate_request_dialog.dart';
+
 class ProfileTab extends StatefulWidget {
   const ProfileTab({super.key});
 
@@ -98,11 +100,8 @@ class _ProfileTabState extends State<ProfileTab> {
       return const Center(child: Text('No hay usuario autenticado'));
     }
 
-    return StreamBuilder<DocumentSnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('users')
-          .doc(user!.uid)
-          .snapshots(),
+    return StreamBuilder<Map<String, dynamic>?>(
+      stream: AdminRepository().streamUserProfile(user!.uid),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
@@ -113,8 +112,8 @@ class _ProfileTabState extends State<ProfileTab> {
         String? estadoSolicitud;
         Map<String, dynamic> extraData = {};
 
-        if (snapshot.hasData && snapshot.data!.exists) {
-          final data = snapshot.data!.data() as Map<String, dynamic>;
+        if (snapshot.hasData && snapshot.data != null) {
+          final data = snapshot.data!;
           role = data['role'] as String? ?? 'normal';
           estadoSolicitud = data['estado_solicitud'] as String?;
           extraData = data;
@@ -135,15 +134,17 @@ class _ProfileTabState extends State<ProfileTab> {
                 child: CircleAvatar(
                   radius: 60,
                   backgroundColor: Colors.grey.shade200,
-                  backgroundImage: user!.photoURL != null && user!.photoURL!.isNotEmpty
-                      ? NetworkImage(user!.photoURL!)
-                      : null,
+                  backgroundImage:
+                      user!.photoURL != null && user!.photoURL!.isNotEmpty
+                          ? NetworkImage(user!.photoURL!)
+                          : null,
                   child: user!.photoURL == null || user!.photoURL!.isEmpty
                       ? Text(
                           user!.displayName?.isNotEmpty == true
                               ? user!.displayName![0].toUpperCase()
                               : user!.email![0].toUpperCase(),
-                          style: const TextStyle(fontSize: 40, color: Colors.grey),
+                          style:
+                              const TextStyle(fontSize: 40, color: Colors.grey),
                         )
                       : null,
                 ),
@@ -155,7 +156,8 @@ class _ProfileTabState extends State<ProfileTab> {
                   user!.displayName?.isNotEmpty == true
                       ? user!.displayName!
                       : user!.email!.split('@').first,
-                  style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                      fontSize: 24, fontWeight: FontWeight.bold),
                 ),
               ),
               // Correo
@@ -170,7 +172,8 @@ class _ProfileTabState extends State<ProfileTab> {
               // Tarjeta de Rol Actual
               Card(
                 elevation: 2,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16)),
                 child: Padding(
                   padding: const EdgeInsets.all(20),
                   child: Row(
@@ -181,7 +184,8 @@ class _ProfileTabState extends State<ProfileTab> {
                           color: _getRoleColor(role).withOpacity(0.1),
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: Icon(_getRoleIcon(role), color: _getRoleColor(role), size: 32),
+                        child: Icon(_getRoleIcon(role),
+                            color: _getRoleColor(role), size: 32),
                       ),
                       const SizedBox(width: 20),
                       Expanded(
@@ -190,12 +194,14 @@ class _ProfileTabState extends State<ProfileTab> {
                           children: [
                             const Text(
                               'Rol actual',
-                              style: TextStyle(color: Colors.grey, fontSize: 14),
+                              style:
+                                  TextStyle(color: Colors.grey, fontSize: 14),
                             ),
                             const SizedBox(height: 4),
                             Text(
                               _roleToDisplayString(role),
-                              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                              style: const TextStyle(
+                                  fontSize: 20, fontWeight: FontWeight.bold),
                             ),
                           ],
                         ),
@@ -217,14 +223,17 @@ class _ProfileTabState extends State<ProfileTab> {
                   icon: Icons.hourglass_empty,
                   color: Colors.orange,
                   title: 'Solicitud en revisión',
-                  subtitle: 'Tu solicitud está siendo evaluada por el equipo de CorpMove.',
+                  subtitle:
+                      'Tu solicitud está siendo evaluada por el equipo de CorpMove.',
                 ),
                 const SizedBox(height: 12),
                 Center(
                   child: TextButton.icon(
                     onPressed: _isLoading ? null : _cancelarSolicitud,
                     icon: const Icon(Icons.cancel, color: Colors.red),
-                    label: const Text('Cancelar solicitud', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                    label: const Text('Cancelar solicitud',
+                        style: TextStyle(
+                            color: Colors.red, fontWeight: FontWeight.bold)),
                   ),
                 ),
                 const SizedBox(height: 20),
@@ -233,7 +242,8 @@ class _ProfileTabState extends State<ProfileTab> {
                   icon: Icons.cancel_outlined,
                   color: Colors.red,
                   title: 'Solicitud rechazada',
-                  subtitle: extraData['motivo_rechazo'] ?? 'No se especificó motivo.',
+                  subtitle:
+                      extraData['motivo_rechazo'] ?? 'No se especificó motivo.',
                 ),
                 const SizedBox(height: 20),
               ],
@@ -255,7 +265,8 @@ class _ProfileTabState extends State<ProfileTab> {
                 const SizedBox(height: 12),
                 _buildUpgradeCard(
                   title: 'Afíliate como Empresa',
-                  subtitle: 'Obtén beneficios corporativos y administra empleados',
+                  subtitle:
+                      'Obtén beneficios corporativos y administra empleados',
                   icon: Icons.business,
                   color: const Color(0xFF1A237E),
                   onTap: _isLoading ? null : _solicitarCorporativo,
@@ -264,7 +275,9 @@ class _ProfileTabState extends State<ProfileTab> {
               ],
 
               // Mensaje si ya tiene un rol especial
-              if (role != 'normal' && estadoSolicitud != 'pendiente' && estadoSolicitud != 'rechazado') ...[
+              if (role != 'normal' &&
+                  estadoSolicitud != 'pendiente' &&
+                  estadoSolicitud != 'rechazado') ...[
                 Card(
                   color: Colors.green.shade50,
                   child: Padding(
@@ -296,7 +309,8 @@ class _ProfileTabState extends State<ProfileTab> {
                     backgroundColor: Colors.redAccent,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14)),
                   ),
                 ),
               ),
@@ -328,7 +342,8 @@ class _ProfileTabState extends State<ProfileTab> {
             const SizedBox(height: 16),
             Text(
               title,
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: color),
+              style: TextStyle(
+                  fontSize: 18, fontWeight: FontWeight.bold, color: color),
             ),
             const SizedBox(height: 8),
             Text(
@@ -372,9 +387,13 @@ class _ProfileTabState extends State<ProfileTab> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    Text(title,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 16)),
                     const SizedBox(height: 4),
-                    Text(subtitle, style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
+                    Text(subtitle,
+                        style: TextStyle(
+                            color: Colors.grey.shade600, fontSize: 13)),
                   ],
                 ),
               ),
@@ -388,32 +407,48 @@ class _ProfileTabState extends State<ProfileTab> {
 
   Color _getRoleColor(String role) {
     switch (role) {
-      case 'owner': return Colors.black87;
-      case 'admin': return Colors.purple;
-      case 'driver': return Colors.orange;
-      case 'employee': return const Color(0xFF1A237E);
-      default: return Colors.grey;
+      case 'owner':
+        return Colors.black87;
+      case 'admin':
+        return Colors.purple;
+      case 'driver':
+        return Colors.orange;
+      case 'employee':
+        return const Color(0xFF1A237E);
+      default:
+        return Colors.grey;
     }
   }
 
   IconData _getRoleIcon(String role) {
     switch (role) {
-      case 'owner': return Icons.admin_panel_settings;
-      case 'admin': return Icons.business_center;
-      case 'driver': return Icons.drive_eta;
-      case 'employee': return Icons.badge;
-      default: return Icons.person;
+      case 'owner':
+        return Icons.admin_panel_settings;
+      case 'admin':
+        return Icons.business_center;
+      case 'driver':
+        return Icons.drive_eta;
+      case 'employee':
+        return Icons.badge;
+      default:
+        return Icons.person;
     }
   }
 
   String _roleToDisplayString(String role) {
     switch (role) {
-      case 'normal': return 'Usuario Normal';
-      case 'employee': return 'Empleado Corporativo';
-      case 'driver': return 'Conductor';
-      case 'admin': return 'Administrador';
-      case 'owner': return 'Dueño';
-      default: return role;
+      case 'normal':
+        return 'Usuario Normal';
+      case 'employee':
+        return 'Empleado Corporativo';
+      case 'driver':
+        return 'Conductor';
+      case 'admin':
+        return 'Administrador';
+      case 'owner':
+        return 'Dueño';
+      default:
+        return role;
     }
   }
 }

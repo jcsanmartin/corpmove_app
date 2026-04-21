@@ -9,6 +9,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:corpmove_app/core/services/auth_service.dart';
 import 'package:corpmove_app/core/utils/user_role.dart';
+import 'package:corpmove_app/features/admin/data/admin_repository.dart';
 
 class CorporateRequestDialog extends StatefulWidget {
   const CorporateRequestDialog({super.key});
@@ -218,46 +219,58 @@ class _CorporateRequestDialogState extends State<CorporateRequestDialog> {
                   ),
                 ),
                 const SizedBox(height: 24),
-
-                // 🏢 Dropdown de Empresas (StreamBuilder)
-                StreamBuilder<QuerySnapshot>(
-                  stream: FirebaseFirestore.instance.collection('companies').snapshots(),
+                // 🏢 Dropdown de Empresas (StreamBuilder de Supabase)
+                StreamBuilder<List<Map<String, dynamic>>>(
+                  stream: AdminRepository().streamAllCompanies(),
                   builder: (context, snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting) {
                       return const Center(child: CircularProgressIndicator());
                     }
-                    if (snapshot.hasError || !snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                      return const Text('No hay empresas registradas.', style: TextStyle(color: Colors.red));
+                    if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
+                      return const Text('No hay empresas registradas.',
+                          style: TextStyle(color: Colors.red));
                     }
 
-                    final companies = snapshot.data!.docs;
+                    final companies = snapshot.data!;
 
                     return DropdownButtonFormField<String>(
                       decoration: InputDecoration(
                         labelText: 'Selecciona tu Empresa',
-                        labelStyle: GoogleFonts.inter(color: const Color(0xFF64748B)),
-                        prefixIcon: const Icon(Icons.apartment, color: Color(0xFF64748B)),
+                        labelStyle:
+                            GoogleFonts.inter(color: const Color(0xFF64748B)),
+                        prefixIcon: const Icon(Icons.apartment,
+                            color: Color(0xFF64748B)),
                         filled: true,
                         fillColor: const Color(0xFFF8FAFC),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
-                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF2563EB), width: 1.5)),
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none),
+                        enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(
+                                color: Color(0xFFE2E8F0))),
+                        focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(
+                                color: Color(0xFF2563EB), width: 1.5)),
                       ),
-                      style: GoogleFonts.inter(color: const Color(0xFF0F172A), fontSize: 15),
+                      style: GoogleFonts.inter(
+                          color: const Color(0xFF0F172A), fontSize: 15),
                       value: _selectedCompanyId,
                       isExpanded: true,
-                      items: companies.map((doc) {
-                        final data = doc.data() as Map<String, dynamic>;
+                      items: companies.map((data) {
                         return DropdownMenuItem(
-                          value: doc.id,
-                          child: Text(data['company_name'] ?? 'Empresa sin nombre'),
+                          value: data['id'].toString(),
+                          child: Text(
+                              data['company_name'] ?? 'Empresa sin nombre'),
                         );
                       }).toList(),
                       onChanged: (val) {
                         setState(() {
                           _selectedCompanyId = val;
-                          final selectedDoc = companies.firstWhere((doc) => doc.id == val);
-                          _selectedCompanyName = (selectedDoc.data() as Map<String, dynamic>)['company_name'];
+                          final selectedDoc = companies.firstWhere(
+                              (data) => data['id'].toString() == val);
+                          _selectedCompanyName = selectedDoc['company_name'];
                         });
                       },
                       validator: (value) => value == null ? 'Requerido' : null,

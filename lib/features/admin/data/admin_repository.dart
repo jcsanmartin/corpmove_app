@@ -10,6 +10,14 @@ class AdminRepository {
   // EMPRESA
   // ─────────────────────────────────────────────
 
+  /// Stream de todas las empresas (para que el usuario elija una).
+  Stream<List<Map<String, dynamic>>> streamAllCompanies() {
+    return _db
+        .from('companies')
+        .stream(primaryKey: ['id'])
+        .order('company_name', ascending: true);
+  }
+
   /// Stream en tiempo real de la configuración de la empresa.
   Stream<Map<String, dynamic>?> streamCompanyConfig(String companyId) {
     return _db
@@ -186,26 +194,70 @@ class AdminRepository {
   // USUARIO (sincronización Firebase UID → Supabase)
   // ─────────────────────────────────────────────
 
-  /// Crear o actualizar el perfil del usuario en Supabase usando su Firebase UID.
+  /// Sincroniza el perfil del usuario con Supabase de forma segura:
+  /// - Si el usuario NO existe: lo crea con rol 'normal'.
+  /// - Si el usuario YA existe: solo actualiza email, foto y nombre.
+  ///   El rol NUNCA se sobreescribe en logins posteriores.
+  Future<void> syncUserProfile({
+    required String firebaseUid,
+    required String email,
+    String? displayName,
+    String? photoUrl,
+  }) async {
+    try {
+      // 1. Verificar si ya existe en Supabase
+      final existing = await _db
+          .from('users')
+          .select('id, role')
+          .eq('firebase_uid', firebaseUid)
+          .maybeSingle();
+
+      if (existing == null) {
+        // 2a. Usuario nuevo: crear con rol 'normal' por defecto
+        debugPrint('[Supabase] Creando nuevo usuario: $email');
+        await _db.from('users').insert({
+          'firebase_uid': firebaseUid,
+          'email': email,
+          'display_name': displayName,
+          'photo_url': photoUrl,
+          'role': 'normal',
+          'estado_solicitud': 'ninguno',
+        });
+      } else {
+        // 2b. Usuario existente: actualizar solo campos de perfil (SIN tocar el rol)
+        debugPrint('[Supabase] Actualizando perfil (rol preservado: ${existing['role']}): $email');
+        await _db.from('users').update({
+          'email': email,
+          'display_name': displayName,
+          'photo_url': photoUrl,
+        }).eq('firebase_uid', firebaseUid);
+      }
+    } catch (e) {
+      debugPrint('[Supabase] Error al sincronizar usuario: $e');
+    }
+  }
+
+  /// @deprecated Usar syncUserProfile en su lugar.
   Future<void> upsertUser({
     required String firebaseUid,
     required String email,
     String? displayName,
     String? photoUrl,
     String role = 'normal',
-  }) async {
-    try {
-      await _db.from('users').upsert({
-        'firebase_uid': firebaseUid,
-        'email': email,
-        'display_name': displayName,
-        'photo_url': photoUrl,
-        'role': role,
-        'estado_solicitud': 'ninguno',
-      }, onConflict: 'firebase_uid');
-    } catch (e) {
-      debugPrint('[Supabase] Error al upsert usuario: $e');
-    }
+  }) => syncUserProfile(
+        firebaseUid: firebaseUid,
+        email: email,
+        displayName: displayName,
+        photoUrl: photoUrl,
+      );
+
+  /// Escuchar cambios en el perfil del usuario en tiempo real.
+  Stream<Map<String, dynamic>?> streamUserProfile(String firebaseUid) {
+    return _db
+        .from('users')
+        .stream(primaryKey: ['id'])
+        .eq('firebase_uid', firebaseUid)
+        .map((rows) => rows.isEmpty ? null : rows.first);
   }
 
   /// Obtener el perfil completo del usuario por firebase_uid.

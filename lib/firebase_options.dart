@@ -64,7 +64,8 @@ class DefaultFirebaseOptions {
     messagingSenderId: '818311467202',
     projectId: 'corpmove-9fc4d',
     storageBucket: 'corpmove-9fc4d.firebasestorage.app',
-    iosClientId: '818311467202-gvbihmsv8e713quqqftemja61e1iu18f.apps.googleusercontent.com',
+    iosClientId:
+        '818311467202-gvbihmsv8e713quqqftemja61e1iu18f.apps.googleusercontent.com',
     iosBundleId: 'com.example.corpmoveApp',
   );
 
@@ -74,7 +75,8 @@ class DefaultFirebaseOptions {
     messagingSenderId: '818311467202',
     projectId: 'corpmove-9fc4d',
     storageBucket: 'corpmove-9fc4d.firebasestorage.app',
-    iosClientId: '818311467202-gvbihmsv8e713quqqftemja61e1iu18f.apps.googleusercontent.com',
+    iosClientId:
+        '818311467202-gvbihmsv8e713quqqftemja61e1iu18f.apps.googleusercontent.com',
     iosBundleId: 'com.example.corpmoveApp',
   );
 
