@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:corpmove_app/core/theme/app_theme.dart';
 import 'package:corpmove_app/features/admin/application/admin_provider.dart';
 
 class CompanyAdminScreen extends StatefulWidget {
@@ -21,12 +22,35 @@ class _CompanyAdminScreenState extends State<CompanyAdminScreen> {
     return ChangeNotifierProvider(
       create: (_) => AdminProvider(),
       child: Scaffold(
-        backgroundColor: const Color(0xFFF8FAFC), // Slate 50
+        backgroundColor: AppColors.scaffoldLight,
         appBar: AppBar(
-          title: Text('Panel Corporativo',
-              style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
-          backgroundColor: const Color(0xFF0F172A), // Slate 900
-          foregroundColor: Colors.white,
+          title: Text('Panel Corporativo', style: GoogleFonts.inter(fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+          backgroundColor: AppColors.scaffoldLight,
+          foregroundColor: AppColors.textPrimary,
+          elevation: 0,
+          leading: Builder(
+            builder: (context) => Padding(
+              padding: const EdgeInsets.only(left: 16, top: 8, bottom: 8),
+              child: GestureDetector(
+                onTap: () => Scaffold.of(context).openDrawer(),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceLight,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.3),
+                        blurRadius: 10,
+                        spreadRadius: 1,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(Icons.menu_rounded, color: AppColors.textPrimary, size: 24),
+                ),
+              ),
+            ),
+          ),
           actions: [
             Builder(builder: (context) {
               return IconButton(
@@ -105,7 +129,7 @@ class _CompanyAdminScreenState extends State<CompanyAdminScreen> {
                 style: GoogleFonts.inter(
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
-                    color: const Color(0xFF0F172A)),
+                    color: AppColors.textPrimary),
               ),
               const SizedBox(height: 16),
               Row(
@@ -127,7 +151,7 @@ class _CompanyAdminScreenState extends State<CompanyAdminScreen> {
           child: Text(
             'Bienvenido al panel central de administración. Desde el menú lateral puedes gestionar a tus empleados, modificar el convenio o descargar reportes de consumo.',
             style: GoogleFonts.inter(
-                color: const Color(0xFF64748B), fontSize: 16, height: 1.5),
+                color: AppColors.textMuted, fontSize: 16, height: 1.5),
           ),
         ),
       ],
@@ -146,14 +170,14 @@ class _CompanyAdminScreenState extends State<CompanyAdminScreen> {
               style: GoogleFonts.inter(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
-                  color: const Color(0xFF0F172A)),
+                  color: AppColors.textPrimary),
             ),
             ElevatedButton.icon(
               onPressed: () => _showEmployeeDialog(context, provider, null),
               icon: const Icon(Icons.add),
               label: const Text('Agregar'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF2563EB), // Blue 600
+                backgroundColor: AppColors.accentLime, // Blue 600
                 foregroundColor: Colors.white,
                 elevation: 0,
                 shape: RoundedRectangleBorder(
@@ -172,7 +196,7 @@ class _CompanyAdminScreenState extends State<CompanyAdminScreen> {
                 Padding(
                   padding: const EdgeInsets.all(24),
                   child: Text('No hay empleados registrados en esta empresa.',
-                      style: GoogleFonts.inter(color: const Color(0xFF64748B))),
+                      style: GoogleFonts.inter(color: AppColors.textMuted)),
                 )
               else
                 ListView.builder(
@@ -213,7 +237,7 @@ class _CompanyAdminScreenState extends State<CompanyAdminScreen> {
                 style: GoogleFonts.inter(
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
-                    color: const Color(0xFF0F172A)),
+                    color: AppColors.textPrimary),
               ),
               const SizedBox(height: 24),
               _buildConfigItem(
@@ -267,14 +291,14 @@ class _CompanyAdminScreenState extends State<CompanyAdminScreen> {
                 style: GoogleFonts.inter(
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
-                    color: const Color(0xFF0F172A)),
+                    color: AppColors.textPrimary),
               ),
               const SizedBox(height: 16),
               Text(
                 'Descarga el detalle de todos los viajes corporativos realizados por tus empleados durante el último mes de facturación.',
                 textAlign: TextAlign.center,
                 style: GoogleFonts.inter(
-                    color: const Color(0xFF64748B), height: 1.5),
+                    color: AppColors.textMuted, height: 1.5),
               ),
               const SizedBox(height: 32),
               SizedBox(
@@ -292,7 +316,7 @@ class _CompanyAdminScreenState extends State<CompanyAdminScreen> {
                   label: const Text('Descargar CSV'),
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
-                    backgroundColor: const Color(0xFF2563EB), // Blue 600
+                    backgroundColor: AppColors.accentLime, // Blue 600
                     foregroundColor: Colors.white,
                     elevation: 0,
                     shape: RoundedRectangleBorder(
@@ -316,10 +340,9 @@ class _CompanyAdminScreenState extends State<CompanyAdminScreen> {
       EdgeInsetsGeometry padding = const EdgeInsets.all(24)}) {
     return Container(
       padding: padding,
-      decoration: BoxDecoration(
-        color: Colors.white,
+      decoration: AppDecorations.cardElevated.copyWith(
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: AppColors.borderSubtle),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.03),
@@ -362,7 +385,7 @@ class _CompanyAdminScreenState extends State<CompanyAdminScreen> {
           style: GoogleFonts.inter(
               fontSize: 18,
               fontWeight: FontWeight.w700,
-              color: const Color(0xFF0F172A)),
+              color: AppColors.textPrimary),
         ),
         const SizedBox(height: 16),
         if (pendingDocs.isEmpty)
@@ -373,7 +396,7 @@ class _CompanyAdminScreenState extends State<CompanyAdminScreen> {
                 const SizedBox(height: 16),
                 Text('No hay solicitudes pendientes',
                     style: GoogleFonts.inter(
-                        color: const Color(0xFF64748B), fontSize: 16)),
+                        color: AppColors.textMuted, fontSize: 16)),
               ],
             ),
           )
@@ -399,14 +422,14 @@ class _CompanyAdminScreenState extends State<CompanyAdminScreen> {
                       children: [
                         CircleAvatar(
                           backgroundImage: _getAvatarImageProvider(photoUrl),
-                          backgroundColor: const Color(0xFFE2E8F0),
+                          backgroundColor: AppColors.borderSubtle,
                           child: photoUrl == null
                               ? Text(
                                   nombre.isNotEmpty
                                       ? nombre[0].toUpperCase()
                                       : 'U',
                                   style: GoogleFonts.inter(
-                                      color: const Color(0xFF0F172A),
+                                      color: AppColors.textPrimary,
                                       fontWeight: FontWeight.bold))
                               : null,
                         ),
@@ -419,10 +442,10 @@ class _CompanyAdminScreenState extends State<CompanyAdminScreen> {
                                   style: GoogleFonts.inter(
                                       fontWeight: FontWeight.w700,
                                       fontSize: 16,
-                                      color: const Color(0xFF0F172A))),
+                                      color: AppColors.textPrimary)),
                               Text(email,
                                   style: GoogleFonts.inter(
-                                      color: const Color(0xFF64748B))),
+                                      color: AppColors.textMuted)),
                             ],
                           ),
                         ),
@@ -431,9 +454,9 @@ class _CompanyAdminScreenState extends State<CompanyAdminScreen> {
                               style: GoogleFonts.inter(
                                   fontSize: 10,
                                   fontWeight: FontWeight.w700,
-                                  color: const Color(0xFF2563EB))),
+                                  color: AppColors.accentLime)),
                           backgroundColor:
-                              const Color(0xFF2563EB).withOpacity(0.1),
+                              AppColors.accentLime.withOpacity(0.1),
                           side: BorderSide.none,
                         ),
                       ],
@@ -503,7 +526,7 @@ class _CompanyAdminScreenState extends State<CompanyAdminScreen> {
                 style: GoogleFonts.inter(
                     fontSize: 22,
                     fontWeight: FontWeight.w800,
-                    color: const Color(0xFF0F172A)),
+                    color: AppColors.textPrimary),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 16),
@@ -511,15 +534,15 @@ class _CompanyAdminScreenState extends State<CompanyAdminScreen> {
                 'Para comenzar a gestionar los beneficios corporativos de tus empleados, primero debes registrar tu empresa en la plataforma.',
                 textAlign: TextAlign.center,
                 style: GoogleFonts.inter(
-                    color: const Color(0xFF64748B), height: 1.5),
+                    color: AppColors.textMuted, height: 1.5),
               ),
               const SizedBox(height: 32),
               TextField(
                 controller: companyController,
-                style: GoogleFonts.inter(color: const Color(0xFF0F172A)),
+                style: GoogleFonts.inter(color: AppColors.textPrimary),
                 decoration: InputDecoration(
                   labelText: 'Nombre de la empresa',
-                  labelStyle: GoogleFonts.inter(color: const Color(0xFF64748B)),
+                  labelStyle: GoogleFonts.inter(color: AppColors.textMuted),
                   filled: true,
                   fillColor: const Color(0xFFF8FAFC),
                   border: OutlineInputBorder(
@@ -554,7 +577,7 @@ class _CompanyAdminScreenState extends State<CompanyAdminScreen> {
                   },
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
-                    backgroundColor: const Color(0xFF2563EB), // Blue 600
+                    backgroundColor: AppColors.accentLime, // Blue 600
                     foregroundColor: Colors.white,
                     elevation: 0,
                     shape: RoundedRectangleBorder(
@@ -619,7 +642,7 @@ class _CompanyAdminScreenState extends State<CompanyAdminScreen> {
                 left: 16,
                 right: 16),
             decoration: const BoxDecoration(
-              color: Color(0xFF0F172A), // Slate 900
+              color: AppColors.surfaceLight, // Slate 900
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

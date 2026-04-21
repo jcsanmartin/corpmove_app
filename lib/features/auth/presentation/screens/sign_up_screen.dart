@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:corpmove_app/core/theme/app_theme.dart';
 import 'package:corpmove_app/features/auth/presentation/widgets/sign_up_form.dart';
 import 'package:corpmove_app/features/auth/presentation/screens/login_screen.dart';
 
@@ -20,25 +21,25 @@ class SignUpScreen extends StatelessWidget {
                   width: 80,
                   height: 80,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF1A237E).withOpacity(0.1),
+                    color: AppColors.accentLime.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: const Icon(
                     Icons.person_add,
                     size: 45,
-                    color: Color(0xFF1A237E),
+                    color: AppColors.accentLime,
                   ),
                 ),
               ),
               const SizedBox(height: 30),
               const Text(
                 'Crear cuenta',
-                style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Color(0xFF1A237E)),
+                style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
               ),
               const SizedBox(height: 10),
-              Text(
+              const Text(
                 'Regístrate para comenzar a usar CorpMove',
-                style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
+                style: TextStyle(fontSize: 16, color: AppColors.textMuted),
               ),
               const SizedBox(height: 40),
               const SignUpForm(),
@@ -46,20 +47,20 @@ class SignUpScreen extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(
+                  const Text(
                     '¿Ya tienes cuenta? ',
-                    style: TextStyle(color: Colors.grey.shade600),
+                    style: TextStyle(color: AppColors.textMuted),
                   ),
                   TextButton(
                     onPressed: () {
                       Navigator.pushReplacement(
                         context,
-                        MaterialPageRoute(builder: (_) => const LoginScreen()),
+                        MaterialPageRoute(builder: (_) => const LoginScreen(isCorporateMode: false)),
                       );
                     },
                     child: const Text(
                       'Inicia sesión',
-                      style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFFF6D00)),
+                      style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.accentLime),
                     ),
                   ),
                 ],

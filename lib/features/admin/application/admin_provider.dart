@@ -95,6 +95,7 @@ class AdminProvider extends ChangeNotifier {
 
   Future<void> toggleEmployeeStatus(String userId, bool currentStatus) async {
     try {
+      // El stream de Supabase actualiza la lista automáticamente.
       await _repository.updateEmployeeStatus(userId, !currentStatus);
     } catch (e) {
       _setError(e.toString());
@@ -137,20 +138,18 @@ class AdminProvider extends ChangeNotifier {
   // ─────────────────────────────────────────────
 
   Future<void> approveRequest(String uid) async {
-    _setLoading();
     try {
+      // El stream de Supabase refleja el cambio en tiempo real.
       await _repository.approveRequest(uid);
-      _setSuccess();
     } catch (e) {
       _setError(e.toString());
     }
   }
 
   Future<void> rejectRequest(String uid) async {
-    _setLoading();
     try {
+      // El stream de Supabase refleja el cambio en tiempo real.
       await _repository.rejectRequest(uid);
-      _setSuccess();
     } catch (e) {
       _setError(e.toString());
     }

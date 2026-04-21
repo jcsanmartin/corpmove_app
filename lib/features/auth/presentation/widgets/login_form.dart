@@ -1,5 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:corpmove_app/core/theme/app_theme.dart';
 import 'package:corpmove_app/core/services/auth_service.dart';
 import 'package:corpmove_app/core/utils/user_role.dart';
 import 'package:corpmove_app/features/trip_passenger/presentation/screens/passenger_home_screen.dart';
@@ -107,67 +109,201 @@ class _LoginFormState extends State<LoginForm> {
 
   void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.red),
+      SnackBar(content: Text(message), backgroundColor: AppColors.error),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     final isLoading = _isLoading || _isGoogleLoading;
+
     return Form(
       key: _formKey,
       child: Column(
         children: [
+          // Email field
           TextFormField(
             controller: _emailController,
             keyboardType: TextInputType.emailAddress,
             enabled: !isLoading,
-            decoration: const InputDecoration(
-              labelText: 'Correo electrónico',
-              prefixIcon: Icon(Icons.email_outlined),
+            style: GoogleFonts.inter(
+              color: AppColors.textPrimary,
+              fontSize: 15,
             ),
-            validator: (v) => (v == null || v.isEmpty) ? 'Ingresa tu correo' : (!v.contains('@') ? 'Correo inválido' : null),
+            decoration: InputDecoration(
+              labelText: 'Correo electrónico',
+              labelStyle: GoogleFonts.inter(color: AppColors.textMuted),
+              prefixIcon: const Icon(
+                Icons.email_outlined,
+                color: AppColors.textMuted,
+              ),
+              filled: true,
+              fillColor: AppColors.surfaceLight,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(color: AppColors.borderSubtle),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(color: AppColors.borderSubtle),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(
+                  color: AppColors.accentLime,
+                  width: 1.5,
+                ),
+              ),
+            ),
+            validator: (v) => (v == null || v.isEmpty)
+                ? 'Ingresa tu correo'
+                : (!v.contains('@') ? 'Correo inválido' : null),
           ),
           const SizedBox(height: 20),
+
+          // Password field
           TextFormField(
             controller: _passwordController,
             obscureText: !_isPasswordVisible,
             enabled: !isLoading,
+            style: GoogleFonts.inter(
+              color: AppColors.textPrimary,
+              fontSize: 15,
+            ),
             decoration: InputDecoration(
               labelText: 'Contraseña',
-              prefixIcon: const Icon(Icons.lock_outline),
+              labelStyle: GoogleFonts.inter(color: AppColors.textMuted),
+              prefixIcon: const Icon(
+                Icons.lock_outline,
+                color: AppColors.textMuted,
+              ),
               suffixIcon: IconButton(
-                icon: Icon(_isPasswordVisible ? Icons.visibility_off : Icons.visibility),
-                onPressed: isLoading ? null : () => setState(() => _isPasswordVisible = !_isPasswordVisible),
+                icon: Icon(
+                  _isPasswordVisible
+                      ? Icons.visibility_off
+                      : Icons.visibility,
+                  color: AppColors.textMuted,
+                ),
+                onPressed: isLoading
+                    ? null
+                    : () => setState(
+                        () => _isPasswordVisible = !_isPasswordVisible),
+              ),
+              filled: true,
+              fillColor: AppColors.surfaceLight,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(color: AppColors.borderSubtle),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(color: AppColors.borderSubtle),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(
+                  color: AppColors.accentLime,
+                  width: 1.5,
+                ),
               ),
             ),
-            validator: (v) => (v == null || v.isEmpty) ? 'Ingresa tu contraseña' : (v.length < 6 ? 'Mínimo 6 caracteres' : null),
+            validator: (v) => (v == null || v.isEmpty)
+                ? 'Ingresa tu contraseña'
+                : (v.length < 6 ? 'Mínimo 6 caracteres' : null),
           ),
-          const SizedBox(height: 30),
+          const SizedBox(height: 32),
+
+          // Login button (accent lime)
           SizedBox(
             width: double.infinity,
+            height: 56,
             child: ElevatedButton(
               onPressed: isLoading ? null : _login,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.accentLime,
+                foregroundColor: AppColors.textOnAccent,
+                disabledBackgroundColor:
+                    AppColors.accentLime.withOpacity(0.3),
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
               child: _isLoading
-                  ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
-                  : const Text('Iniciar Sesión', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+                  ? const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(
+                        color: AppColors.textOnAccent,
+                        strokeWidth: 2.5,
+                      ),
+                    )
+                  : Text(
+                      'Iniciar Sesión',
+                      style: GoogleFonts.inter(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
             ),
           ),
-          const SizedBox(height: 15),
-          const Text('— O continúa con —', style: TextStyle(color: Colors.grey)),
-          const SizedBox(height: 15),
+          const SizedBox(height: 24),
+
+          // Divider
+          Row(
+            children: [
+              Expanded(
+                child: Divider(color: AppColors.borderSubtle, thickness: 0.5),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Text(
+                  'O continúa con',
+                  style: GoogleFonts.inter(
+                    color: AppColors.textMuted,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+              Expanded(
+                child: Divider(color: AppColors.borderSubtle, thickness: 0.5),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+
+          // Google button
           SizedBox(
             width: double.infinity,
+            height: 56,
             child: OutlinedButton.icon(
               onPressed: isLoading ? null : _signInWithGoogle,
               icon: _isGoogleLoading
-                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2.5))
-                  : Image.network('https://img.icons8.com/color/48/000000/google-logo.png', width: 24, height: 24),
-              label: const Text('Google'),
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.5,
+                        color: AppColors.textPrimary,
+                      ),
+                    )
+                  : Image.network(
+                      'https://img.icons8.com/color/48/000000/google-logo.png',
+                      width: 24,
+                      height: 24,
+                    ),
+              label: Text(
+                'Google',
+                style: GoogleFonts.inter(
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
+              ),
               style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                side: const BorderSide(color: Colors.grey),
-                foregroundColor: Colors.black87,
+                side: const BorderSide(color: AppColors.borderAccent),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
               ),
             ),
           ),

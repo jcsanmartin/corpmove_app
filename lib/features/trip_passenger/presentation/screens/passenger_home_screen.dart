@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:corpmove_app/core/theme/app_theme.dart';
 import 'package:corpmove_app/features/trip_passenger/presentation/screens/negotiation_radar_screen.dart';
 import 'package:corpmove_app/features/trip_passenger/presentation/widgets/map_placeholder.dart';
 import 'package:corpmove_app/features/trip_passenger/presentation/widgets/dual_mode_selector.dart';
@@ -20,6 +22,7 @@ class _PassengerHomeScreenState extends State<PassengerHomeScreen> {
   late bool _isCorporateMode;
   final double _techoCobertura = 15000.0;
   int _selectedIndex = 0;
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   @override
   void initState() {
@@ -36,34 +39,22 @@ class _PassengerHomeScreenState extends State<PassengerHomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          widget.isCorporateEnabled ? 'CorpMove - Empleado' : 'CorpMove',
-        ),
-        backgroundColor: const Color(0xFF1A237E),
-        foregroundColor: Colors.white,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_outlined),
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Notificaciones')),
-              );
-            },
-          ),
-        ],
-      ),
+      key: _scaffoldKey,
+      backgroundColor: AppColors.scaffoldLight,
       drawer: _buildDrawer(context),
       body: _screens[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         onTap: (index) => setState(() => _selectedIndex = index),
-        selectedItemColor: const Color(0xFF1A237E),
-        unselectedItemColor: Colors.grey,
+        selectedItemColor: AppColors.textPrimary,
+        unselectedItemColor: AppColors.textMuted,
+        backgroundColor: AppColors.surfaceLight,
+        elevation: 16,
+        type: BottomNavigationBarType.fixed,
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Inicio'),
-          BottomNavigationBarItem(icon: Icon(Icons.history), label: 'Historial'),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Perfil'),
+          BottomNavigationBarItem(icon: Icon(Icons.home_rounded), label: 'Inicio'),
+          BottomNavigationBarItem(icon: Icon(Icons.history_rounded), label: 'Historial'),
+          BottomNavigationBarItem(icon: Icon(Icons.person_rounded), label: 'Perfil'),
         ],
       ),
     );
@@ -71,56 +62,69 @@ class _PassengerHomeScreenState extends State<PassengerHomeScreen> {
 
   Widget _buildDrawer(BuildContext context) {
     return Drawer(
+      backgroundColor: AppColors.surfaceLight,
       child: ListView(
         padding: EdgeInsets.zero,
         children: [
           DrawerHeader(
             decoration: const BoxDecoration(
-              color: Color(0xFF1A237E),
+              color: AppColors.cardLight,
+              border: Border(bottom: BorderSide(color: AppColors.borderSubtle)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                const CircleAvatar(
-                  radius: 30,
-                  backgroundColor: Colors.white,
-                  child: Icon(Icons.person, size: 40, color: Color(0xFF1A237E)),
+                Container(
+                  padding: const EdgeInsets.all(2),
+                  decoration: BoxDecoration(
+                    color: AppColors.accentLime,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const CircleAvatar(
+                    radius: 30,
+                    backgroundColor: AppColors.surfaceLight,
+                    child: Icon(Icons.person_rounded, size: 36, color: AppColors.textPrimary),
+                  ),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 12),
                 Text(
                   widget.isCorporateEnabled ? 'Empleado CorpMove' : 'Usuario',
-                  style: const TextStyle(color: Colors.white, fontSize: 18),
+                  style: GoogleFonts.inter(
+                    color: AppColors.textPrimary,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
-                const Text(
+                Text(
                   'correo@ejemplo.com',
-                  style: TextStyle(color: Colors.white70),
+                  style: GoogleFonts.inter(
+                    color: AppColors.textMuted,
+                    fontSize: 13,
+                  ),
                 ),
               ],
             ),
           ),
           ListTile(
-            leading: const Icon(Icons.account_circle),
-            title: const Text('Mi cuenta'),
+            leading: const Icon(Icons.account_circle_rounded, color: AppColors.textPrimary),
+            title: Text('Mi cuenta', style: GoogleFonts.inter(fontWeight: FontWeight.w500)),
             onTap: () {
               Navigator.pop(context);
               setState(() => _selectedIndex = 2);
             },
           ),
           ListTile(
-            leading: const Icon(Icons.settings),
-            title: const Text('Configuración'),
+            leading: const Icon(Icons.settings_rounded, color: AppColors.textPrimary),
+            title: Text('Configuración', style: GoogleFonts.inter(fontWeight: FontWeight.w500)),
             onTap: () {
               Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Configuración')),
-              );
             },
           ),
-          const Divider(),
+          const Divider(color: AppColors.borderSubtle),
           ListTile(
-            leading: const Icon(Icons.logout),
-            title: const Text('Cerrar sesión'),
+            leading: const Icon(Icons.logout_rounded, color: AppColors.error),
+            title: Text('Cerrar sesión', style: GoogleFonts.inter(color: AppColors.error, fontWeight: FontWeight.w500)),
             onTap: () {
               Navigator.pop(context);
               Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
@@ -134,142 +138,158 @@ class _PassengerHomeScreenState extends State<PassengerHomeScreen> {
   Widget _buildHomeTab() {
     return Stack(
       children: [
-        const MapPlaceholder(),
+        // Mapa al fondo
+        const Positioned.fill(child: MapPlaceholder()),
+
+        // Top bar con menú y bienvenida flotante
         SafeArea(
           child: Padding(
-            padding: const EdgeInsets.all(20.0),
-            child: Container(
-              height: 56,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(30),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 20,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Row(
-                children: [
-                  const SizedBox(width: 8),
-                  Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 12),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Menú hamburgesa flotante
+                GestureDetector(
+                  onTap: () => _scaffoldKey.currentState?.openDrawer(),
+                  child: Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF1A237E).withOpacity(0.1),
+                      color: AppColors.surfaceLight,
                       shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.search, color: Color(0xFF1A237E), size: 22),
-                  ),
-                  const Expanded(
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 12),
-                      child: Text(
-                        '¿A dónde vamos?',
-                        style: TextStyle(color: Colors.grey, fontSize: 16, fontWeight: FontWeight.w500),
-                      ),
-                    ),
-                  ),
-                  if (widget.isCorporateEnabled)
-                    AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 300),
-                      child: Container(
-                        key: ValueKey(_isCorporateMode),
-                        margin: const EdgeInsets.only(right: 8),
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: _isCorporateMode ? Colors.orange.shade50 : Colors.grey.shade100,
-                          borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.3),
+                          blurRadius: 10,
+                          spreadRadius: 1,
+                          offset: const Offset(0, 2),
                         ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.account_balance_wallet,
-                              size: 18,
-                              color: _isCorporateMode ? Colors.orange.shade700 : Colors.grey.shade600,
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              _isCorporateMode ? '\$${_techoCobertura.toStringAsFixed(0)}' : 'Efectivo',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: _isCorporateMode ? Colors.orange.shade800 : Colors.grey.shade700,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
+                      ],
                     ),
-                ],
-              ),
-            ),
-          ),
-        ),
-        Positioned(
-          right: 20,
-          bottom: 200,
-          child: FloatingActionButton(
-            heroTag: 'location',
-            backgroundColor: Colors.white,
-            foregroundColor: const Color(0xFF1A237E),
-            elevation: 4,
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Centrando ubicación...'), duration: Duration(seconds: 1)),
-              );
-            },
-            child: const Icon(Icons.my_location),
-          ),
-        ),
-        Align(
-          alignment: Alignment.bottomCenter,
-          child: Container(
-            margin: const EdgeInsets.only(bottom: 40, left: 20, right: 20),
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(30),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 30,
-                  offset: const Offset(0, -4),
+                    child: const Icon(Icons.menu_rounded, color: AppColors.textPrimary, size: 28),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                // Texto de Bienvenida como en la referencia
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Bienvenido,',
+                          style: GoogleFonts.inter(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFFF0F0F0), // Blanco tirando a gris suave
+                            shadows: [
+                              Shadow(color: Colors.black.withOpacity(0.6), blurRadius: 12),
+                            ],
+                          ),
+                        ),
+                        Text(
+                          'Carlos',
+                          style: GoogleFonts.inter(
+                            fontSize: 28,
+                            fontWeight: FontWeight.w900,
+                            color: Colors.white,
+                            letterSpacing: -0.5,
+                            shadows: [
+                              Shadow(color: Colors.black.withOpacity(0.6), blurRadius: 12),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ],
             ),
+          ),
+        ),
+
+        // Botón Mi ubicación flotante
+        Positioned(
+          right: 20,
+          bottom: widget.isCorporateEnabled ? 280 : 220, // Ajuste para no chocar con el bottom sheet
+          child: FloatingActionButton(
+            heroTag: 'location',
+            backgroundColor: AppColors.surfaceLight,
+            foregroundColor: AppColors.textPrimary,
+            elevation: 4,
+            mini: true,
+            onPressed: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Centrando ubicación...')),
+              );
+            },
+            child: const Icon(Icons.my_location_rounded),
+          ),
+        ),
+
+        // Bottom Sheet "Hacia dónde vas" y "Qué servicio deseas"
+        Align(
+          alignment: Alignment.bottomCenter,
+          child: Container(
+            width: double.infinity,
+            decoration: AppDecorations.bottomSheet,
+            padding: const EdgeInsets.only(top: 16, left: 24, right: 24, bottom: 32),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+                // Grabber
+                Container(
+                  width: 36,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColors.borderAccent,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                Text(
+                  '¿Hacia a dónde vas?',
+                  style: GoogleFonts.inter(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                // Selector de Modo (Personal / Corporativo)
                 if (widget.isCorporateEnabled)
                   DualModeSelector(
                     isCorporateMode: _isCorporateMode,
                     onModeChanged: (value) => setState(() => _isCorporateMode = value),
-                  )
-                else
+                  ),
+                if (!widget.isCorporateEnabled)
                   Container(
                     padding: const EdgeInsets.symmetric(vertical: 8),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.person, color: Colors.grey.shade600, size: 20),
+                        const Icon(Icons.person_rounded, color: AppColors.textMuted, size: 20),
                         const SizedBox(width: 8),
                         Text(
                           'Modo Personal',
-                          style: TextStyle(
+                          style: GoogleFonts.inter(
                             fontWeight: FontWeight.w600,
-                            color: Colors.grey.shade700,
+                            color: AppColors.textSecondary,
                             fontSize: 16,
                           ),
                         ),
                       ],
                     ),
                   ),
-                const SizedBox(height: 20),
+
+                const SizedBox(height: 24),
+
+                // Botón principal "Ofertar" / "Buscar Viaje"
                 SizedBox(
                   width: double.infinity,
-                  child: ElevatedButton.icon(
+                  child: ElevatedButton(
                     onPressed: () {
                       Navigator.push(
                         context,
@@ -281,40 +301,47 @@ class _PassengerHomeScreenState extends State<PassengerHomeScreen> {
                         ),
                       );
                     },
-                    icon: const Icon(Icons.search, size: 22),
-                    label: Text(
-                      widget.isCorporateEnabled && _isCorporateMode
-                          ? 'Buscar viaje corporativo'
-                          : 'Buscar viaje personal',
-                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-                    ),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: (widget.isCorporateEnabled && _isCorporateMode)
-                          ? const Color(0xFF1A237E)
-                          : const Color(0xFFFF6D00),
-                      foregroundColor: Colors.white,
+                      backgroundColor: AppColors.accentLime,
+                      foregroundColor: AppColors.textOnAccent,
                       padding: const EdgeInsets.symmetric(vertical: 18),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      elevation: 4,
+                      elevation: 0,
+                    ),
+                    child: Text(
+                      widget.isCorporateEnabled && _isCorporateMode
+                          ? 'Solicitar Viaje Corp'
+                          : 'Solicitar Viaje',
+                      style: GoogleFonts.inter(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                   ),
                 ),
+
+                // Aviso de techo de cobertura
                 if (widget.isCorporateEnabled && _isCorporateMode) ...[
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 16),
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.orange.shade50,
-                      borderRadius: BorderRadius.circular(16),
+                      color: AppColors.accentLime.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.accentLime.withOpacity(0.3)),
                     ),
                     child: Row(
                       children: [
-                        Icon(Icons.info_outline, color: Colors.orange.shade700, size: 18),
+                        const Icon(Icons.info_outline_rounded, color: AppColors.textPrimary, size: 18),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            'Techo de cobertura: \$${_techoCobertura.toStringAsFixed(0)} por viaje',
-                            style: TextStyle(color: Colors.orange.shade800, fontSize: 13),
+                            'Techo cobertura: \$${_techoCobertura.toStringAsFixed(0)}',
+                            style: GoogleFonts.inter(
+                              color: AppColors.textPrimary,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
                       ],
@@ -335,14 +362,24 @@ class _HistoryTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
+    return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.history, size: 64, color: Colors.grey),
-          SizedBox(height: 16),
-          Text('Historial de viajes', style: TextStyle(fontSize: 18)),
-          Text('Próximamente...', style: TextStyle(color: Colors.grey)),
+          const Icon(Icons.history_rounded, size: 64, color: AppColors.textMuted),
+          const SizedBox(height: 16),
+          Text(
+            'Historial de viajes',
+            style: GoogleFonts.inter(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          Text(
+            'Próximamente...',
+            style: GoogleFonts.inter(color: AppColors.textMuted),
+          ),
         ],
       ),
     );

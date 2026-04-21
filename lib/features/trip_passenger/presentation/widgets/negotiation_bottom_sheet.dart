@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../application/passenger_trip_provider.dart';
+import 'package:corpmove_app/core/theme/app_theme.dart';
 import 'dual_context_toggle.dart';
 
 class NegotiationBottomSheet extends StatefulWidget {
@@ -26,127 +27,115 @@ class _NegotiationBottomSheetState extends State<NegotiationBottomSheet> {
     return Consumer<PassengerTripProvider>(
       builder: (context, provider, child) {
         final isCorporate = provider.currentMode == TripMode.corporate;
-        final corporateColor = const Color(0xFF00C853);
-        final personalColor = Colors.blue.shade700;
-        final themeColor = isCorporate ? corporateColor : personalColor;
 
         return Container(
-          padding: const EdgeInsets.all(24),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(24),
-              topRight: Radius.circular(24),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black12,
-                blurRadius: 10,
-                offset: Offset(0, -5),
-              ),
-            ],
-          ),
+          padding: const EdgeInsets.only(left: 24, right: 24, top: 16, bottom: 32),
+          decoration: AppDecorations.bottomSheet,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Barra de arrastre
+              // Barra de arrastre (grabber)
               Center(
                 child: Container(
-                  width: 40,
-                  height: 5,
+                  width: 36,
+                  height: 4,
                   decoration: BoxDecoration(
-                    color: Colors.grey.shade300,
+                    color: AppColors.borderAccent,
                     borderRadius: BorderRadius.circular(10),
                   ),
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 24),
 
               Text(
-                'Propón tu tarifa',
+                'Ofrece tu tarifa',
                 style: GoogleFonts.inter(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.textPrimary,
+                  letterSpacing: -0.5,
                 ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 24),
 
               // Input de tarifa
-              TextField(
-                controller: _fareController,
-                keyboardType: TextInputType.number,
-                textAlign: TextAlign.center,
-                style: GoogleFonts.inter(
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                  color: themeColor,
-                ),
-                onChanged: (value) {
-                  final fare = double.tryParse(value) ?? 0.0;
-                  provider.setProposedFare(fare);
-                },
-                decoration: InputDecoration(
-                  prefixText: '\$ ',
-                  prefixStyle: GoogleFonts.inter(
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
-                    color: themeColor,
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 180,
+                    decoration: BoxDecoration(
+                      color: AppColors.cardLight,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: AppColors.borderAccent),
+                    ),
+                    child: TextField(
+                      controller: _fareController,
+                      keyboardType: TextInputType.number,
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.inter(
+                        fontSize: 28,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textPrimary,
+                      ),
+                      onChanged: (value) {
+                        final fare = double.tryParse(value) ?? 0.0;
+                        provider.setProposedFare(fare);
+                      },
+                      decoration: InputDecoration(
+                        prefixText: '\$ ',
+                        prefixStyle: GoogleFonts.inter(
+                          fontSize: 28,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textPrimary,
+                        ),
+                        border: InputBorder.none,
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
+                        fillColor: Colors.transparent,
+                        contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                    ),
                   ),
-                  filled: true,
-                  fillColor: Colors.grey.shade50,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: BorderSide(color: Colors.grey.shade300),
+                  const SizedBox(width: 16),
+                  
+                  // Botón de Ofertar
+                  ElevatedButton(
+                    onPressed: () {
+                      // Simular envío
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Buscando conductores...'),
+                        ),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.accentLime,
+                      foregroundColor: AppColors.textOnAccent,
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: Text(
+                      'Ofertar',
+                      style: GoogleFonts.inter(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
                   ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: BorderSide(color: Colors.grey.shade300),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: BorderSide(color: themeColor, width: 2),
-                  ),
-                ),
+                ],
               ),
 
               // Lógica de Subsidio y Excedente
               if (isCorporate) ...[
-                const SizedBox(height: 16),
+                const SizedBox(height: 24),
                 _buildSurplusAlert(provider),
               ],
-
-              const SizedBox(height: 24),
-
-              // Botón de Buscar Conductor
-              ElevatedButton(
-                onPressed: () {
-                  // Aquí se llamaría al repositorio para guardar en Firestore
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: const Text('Buscando conductores...'),
-                      backgroundColor: themeColor,
-                    ),
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: isCorporate ? Colors.black : personalColor,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                ),
-                child: Text(
-                  'Negociar Tarifa',
-                  style: GoogleFonts.inter(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: isCorporate ? corporateColor : Colors.white,
-                  ),
-                ),
-              ),
             ],
           ),
         );
@@ -157,7 +146,7 @@ class _NegotiationBottomSheetState extends State<NegotiationBottomSheet> {
   Widget _buildSurplusAlert(PassengerTripProvider provider) {
     if (provider.isLoadingLimit) {
       return const Center(
-        child: CircularProgressIndicator(color: Color(0xFF00C853)),
+        child: CircularProgressIndicator(color: AppColors.accentLime),
       );
     }
 
@@ -165,23 +154,31 @@ class _NegotiationBottomSheetState extends State<NegotiationBottomSheet> {
 
     if (surplus > 0) {
       return Container(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.red.shade50,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.red.shade200),
+          color: AppColors.error.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.error.withOpacity(0.2)),
         ),
         child: Row(
           children: [
-            Icon(Icons.warning_amber_rounded, color: Colors.red.shade700),
-            const SizedBox(width: 10),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.error.withOpacity(0.15),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.warning_rounded, color: AppColors.error, size: 20),
+            ),
+            const SizedBox(width: 12),
             Expanded(
               child: Text(
-                'La tarifa supera tu techo de \$${provider.corporateLimit.toStringAsFixed(0)}. Se cobrará un excedente de \$${surplus.toStringAsFixed(0)} a tu tarjeta personal.',
+                'Supera el techo corporativo de \$${provider.corporateLimit.toStringAsFixed(0)}. Excedente: \$${surplus.toStringAsFixed(0)}',
                 style: GoogleFonts.inter(
-                  fontSize: 12,
-                  color: Colors.red.shade700,
-                  fontWeight: FontWeight.w500,
+                  fontSize: 13,
+                  color: AppColors.error,
+                  fontWeight: FontWeight.w600,
+                  height: 1.3,
                 ),
               ),
             ),
@@ -190,23 +187,31 @@ class _NegotiationBottomSheetState extends State<NegotiationBottomSheet> {
       );
     } else {
       return Container(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: const Color(0xFF00C853).withOpacity(0.1),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFF00C853).withOpacity(0.3)),
+          color: AppColors.accentLime.withOpacity(0.15),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.accentLime.withOpacity(0.3)),
         ),
         child: Row(
           children: [
-            const Icon(Icons.check_circle, color: Color(0xFF00C853)),
-            const SizedBox(width: 10),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.accentLime.withOpacity(0.25),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.check_rounded, color: AppColors.textOnAccent, size: 20),
+            ),
+            const SizedBox(width: 12),
             Expanded(
               child: Text(
-                'Tarifa cubierta 100% por el subsidio corporativo. (Límite: \$${provider.corporateLimit.toStringAsFixed(0)})',
+                'Cubierto 100% por corporativo. (Límite: \$${provider.corporateLimit.toStringAsFixed(0)})',
                 style: GoogleFonts.inter(
-                  fontSize: 12,
-                  color: Colors.black87,
-                  fontWeight: FontWeight.w500,
+                  fontSize: 13,
+                  color: AppColors.textPrimary,
+                  fontWeight: FontWeight.w600,
+                  height: 1.3,
                 ),
               ),
             ),

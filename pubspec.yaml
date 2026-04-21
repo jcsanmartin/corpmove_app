@@ -44,3 +44,4 @@ flutter:
 
   assets:
     - assets/map_grid.png
+    - assets/images/

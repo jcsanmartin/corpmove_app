@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:corpmove_app/core/theme/app_theme.dart';
 
 enum TripMode { personal, corporate }
 
@@ -17,19 +18,16 @@ class DualContextToggle extends StatelessWidget {
   Widget build(BuildContext context) {
     final isCorporate = currentMode == TripMode.corporate;
 
-    // Paletas de colores definidas
-    final personalColor = Colors.blue.shade700;
-    final corporateColor = const Color(0xFF00C853); // Verde Esmeralda
-    final corporateBg = Colors.black87;
-
     return Container(
       height: 50,
+      padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: isCorporate ? corporateBg : Colors.white,
-        borderRadius: BorderRadius.circular(30),
+        color: AppColors.surfaceLight,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.borderSubtle, width: 1),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.15),
+            color: Colors.black.withOpacity(0.04),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -37,19 +35,18 @@ class DualContextToggle extends StatelessWidget {
       ),
       child: Stack(
         children: [
-          // Fondo animado del indicador (la "pastilla" seleccionada)
+          // Fondo animado del indicador
           AnimatedAlign(
             alignment:
                 isCorporate ? Alignment.centerRight : Alignment.centerLeft,
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeInOut,
+            duration: const Duration(milliseconds: 280),
+            curve: Curves.easeOutCubic,
             child: FractionallySizedBox(
               widthFactor: 0.5,
               child: Container(
-                margin: const EdgeInsets.all(4),
                 decoration: BoxDecoration(
-                  color: isCorporate ? corporateColor : personalColor,
-                  borderRadius: BorderRadius.circular(26),
+                  color: AppColors.accentLime,
+                  borderRadius: BorderRadius.circular(10),
                 ),
               ),
             ),
@@ -63,10 +60,13 @@ class DualContextToggle extends StatelessWidget {
                   behavior: HitTestBehavior.opaque,
                   child: Center(
                     child: AnimatedDefaultTextStyle(
-                      duration: const Duration(milliseconds: 300),
+                      duration: const Duration(milliseconds: 280),
                       style: GoogleFonts.inter(
-                        color: isCorporate ? Colors.white54 : Colors.white,
-                        fontWeight: FontWeight.w600,
+                        color: !isCorporate
+                            ? AppColors.textOnAccent
+                            : AppColors.textMuted,
+                        fontWeight:
+                            !isCorporate ? FontWeight.w700 : FontWeight.w500,
                         fontSize: 14,
                       ),
                       child: const Text('Personal'),
@@ -80,10 +80,13 @@ class DualContextToggle extends StatelessWidget {
                   behavior: HitTestBehavior.opaque,
                   child: Center(
                     child: AnimatedDefaultTextStyle(
-                      duration: const Duration(milliseconds: 300),
+                      duration: const Duration(milliseconds: 280),
                       style: GoogleFonts.inter(
-                        color: isCorporate ? Colors.black : personalColor,
-                        fontWeight: FontWeight.w600,
+                        color: isCorporate
+                            ? AppColors.textOnAccent
+                            : AppColors.textMuted,
+                        fontWeight:
+                            isCorporate ? FontWeight.w700 : FontWeight.w500,
                         fontSize: 14,
                       ),
                       child: const Text('Corporativo'),

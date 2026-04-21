@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:corpmove_app/core/theme/app_theme.dart';
 
 class DriverHomeScreen extends StatefulWidget {
   const DriverHomeScreen({super.key});
@@ -20,9 +22,33 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Panel Conductor'),
-        backgroundColor: const Color(0xFFFF6D00),
-        foregroundColor: Colors.white,
+        title: Text('Panel Conductor', style: GoogleFonts.inter(fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+        backgroundColor: AppColors.scaffoldLight,
+        foregroundColor: AppColors.textPrimary,
+        elevation: 0,
+        leading: Builder(
+          builder: (context) => Padding(
+            padding: const EdgeInsets.only(left: 16, top: 8, bottom: 8),
+            child: GestureDetector(
+              onTap: () => Scaffold.of(context).openDrawer(),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceLight,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.3),
+                      blurRadius: 10,
+                      spreadRadius: 1,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: const Icon(Icons.menu_rounded, color: AppColors.textPrimary, size: 24),
+              ),
+            ),
+          ),
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.account_balance_wallet),
@@ -35,12 +61,13 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         onTap: (index) => setState(() => _selectedIndex = index),
-        selectedItemColor: const Color(0xFFFF6D00),
-        unselectedItemColor: Colors.grey,
+        selectedItemColor: AppColors.accentLime,
+        unselectedItemColor: AppColors.textMuted,
+        backgroundColor: AppColors.surfaceLight,
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.directions_car), label: 'Viajes'),
-          BottomNavigationBarItem(icon: Icon(Icons.attach_money), label: 'Ganancias'),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Perfil'),
+          BottomNavigationBarItem(icon: Icon(Icons.directions_car_rounded), label: 'Viajes'),
+          BottomNavigationBarItem(icon: Icon(Icons.account_balance_wallet_rounded), label: 'Ganancias'),
+          BottomNavigationBarItem(icon: Icon(Icons.person_rounded), label: 'Perfil'),
         ],
       ),
     );
@@ -48,23 +75,31 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
 
   Widget _buildDrawer(BuildContext context) {
     return Drawer(
+      backgroundColor: AppColors.surfaceLight,
       child: ListView(
         padding: EdgeInsets.zero,
         children: [
-          const DrawerHeader(
-            decoration: BoxDecoration(color: Color(0xFFFF6D00)),
+          DrawerHeader(
+            decoration: const BoxDecoration(
+              color: AppColors.cardLight,
+              border: Border(bottom: BorderSide(color: AppColors.borderSubtle)),
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                CircleAvatar(
-                  radius: 30,
-                  backgroundColor: Colors.white,
-                  child: Icon(Icons.person, size: 40, color: Color(0xFFFF6D00)),
+                Container(
+                  padding: const EdgeInsets.all(2),
+                  decoration: const BoxDecoration(color: AppColors.accentLime, shape: BoxShape.circle),
+                  child: const CircleAvatar(
+                    radius: 30,
+                    backgroundColor: AppColors.surfaceLight,
+                    child: Icon(Icons.person_rounded, size: 36, color: AppColors.textPrimary),
+                  ),
                 ),
-                SizedBox(height: 10),
-                Text('Conductor', style: TextStyle(color: Colors.white, fontSize: 18)),
-                Text('conductor@corpmove.com', style: TextStyle(color: Colors.white70)),
+                const SizedBox(height: 10),
+                Text('Conductor', style: GoogleFonts.inter(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.w700)),
+                Text('conductor@corpmove.com', style: GoogleFonts.inter(color: AppColors.textMuted)),
               ],
             ),
           ),
@@ -136,22 +171,22 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Card(
-            color: const Color(0xFF1A237E),
+          Container(
+            decoration: AppDecorations.cardElevated,
             child: Padding(
               padding: const EdgeInsets.all(20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Ganancias de hoy', style: TextStyle(color: Colors.white70)),
+                  Text('Ganancias de hoy', style: GoogleFonts.inter(color: AppColors.textMuted)),
                   const SizedBox(height: 8),
-                  const Text('\$85.000', style: TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold)),
+                  Text('\$85.000', style: GoogleFonts.inter(color: AppColors.textPrimary, fontSize: 32, fontWeight: FontWeight.w800)),
                   const SizedBox(height: 16),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
-                      _buildEarningChip('Efectivo', 35000, Colors.greenAccent),
-                      _buildEarningChip('B2B Garantizado', 50000, Colors.orangeAccent),
+                      _buildEarningChip('Efectivo', 35000, AppColors.success),
+                      _buildEarningChip('B2B Garantizado', 50000, AppColors.warning),
                     ],
                   ),
                 ],
@@ -178,9 +213,9 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
   Widget _buildEarningChip(String label, int amount, Color color) {
     return Column(
       children: [
-        Text(label, style: const TextStyle(color: Colors.white70, fontSize: 12)),
+        Text(label, style: GoogleFonts.inter(color: AppColors.textMuted, fontSize: 12)),
         const SizedBox(height: 4),
-        Text('\$$amount', style: TextStyle(color: color, fontWeight: FontWeight.bold)),
+        Text('\$$amount', style: GoogleFonts.inter(color: color, fontWeight: FontWeight.bold)),
       ],
     );
   }
@@ -192,9 +227,9 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
     required String distance,
     required double estimatedFare,
   }) {
-    return Card(
-      elevation: 3,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+    return Container(
+      decoration: AppDecorations.cardElevated,
+      margin: const EdgeInsets.only(bottom: 12),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -202,22 +237,22 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
           children: [
             Row(
               children: [
-                Icon(Icons.location_on, color: Colors.red[400]),
+                const Icon(Icons.location_on, color: AppColors.error),
                 const SizedBox(width: 8),
-                Expanded(child: Text(pickup, style: const TextStyle(fontWeight: FontWeight.w500))),
+                Expanded(child: Text(pickup, style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: AppColors.textPrimary))),
                 if (isCorporate)
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: Colors.orange.shade100,
+                      color: AppColors.warning.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.orange),
+                      border: Border.all(color: AppColors.warning),
                     ),
-                    child: const Row(
+                    child: Row(
                       children: [
-                        Icon(Icons.security, size: 16, color: Colors.orange),
-                        SizedBox(width: 4),
-                        Text('B2B Garantizado', style: TextStyle(color: Colors.orange, fontSize: 12)),
+                        const Icon(Icons.security, size: 16, color: AppColors.warning),
+                        const SizedBox(width: 4),
+                        Text('B2B Garantizado', style: GoogleFonts.inter(color: AppColors.warning, fontSize: 12, fontWeight: FontWeight.w600)),
                       ],
                     ),
                   ),
@@ -226,9 +261,9 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
             const SizedBox(height: 8),
             Row(
               children: [
-                Icon(Icons.location_off, color: Colors.blue[400]),
+                const Icon(Icons.location_off, color: AppColors.info),
                 const SizedBox(width: 8),
-                Expanded(child: Text(dropoff)),
+                Expanded(child: Text(dropoff, style: GoogleFonts.inter(color: AppColors.textSecondary))),
               ],
             ),
             const SizedBox(height: 16),
@@ -237,14 +272,14 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.timeline, size: 18),
+                    const Icon(Icons.timeline, size: 18, color: AppColors.textMuted),
                     const SizedBox(width: 4),
-                    Text(distance),
+                    Text(distance, style: GoogleFonts.inter(color: AppColors.textPrimary)),
                   ],
                 ),
                 Text(
                   'Tarifa: \$${estimatedFare.toStringAsFixed(0)}',
-                  style: const TextStyle(fontWeight: FontWeight.bold),
+                  style: GoogleFonts.inter(fontWeight: FontWeight.w800, color: AppColors.accentLime),
                 ),
               ],
             ),
@@ -252,11 +287,11 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
             Row(
               children: [
                 Expanded(
-                  child: ElevatedButton(
+                  child: OutlinedButton(
                     onPressed: () {},
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.grey.shade200,
-                      foregroundColor: Colors.black87,
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: AppColors.borderAccent),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
                     child: const Text('Contraofertar'),
                   ),
@@ -266,8 +301,10 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
                   child: ElevatedButton(
                     onPressed: () {},
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: isCorporate ? const Color(0xFFFF6D00) : const Color(0xFF1A237E),
-                      foregroundColor: Colors.white,
+                      backgroundColor: isCorporate ? AppColors.accentLime : AppColors.info,
+                      foregroundColor: AppColors.textOnAccent,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
                     child: Text(isCorporate ? 'Aceptar' : 'Tomar Viaje'),
                   ),

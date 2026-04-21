@@ -167,6 +167,8 @@ class AdminRepository {
   /// Aprobar solicitud de afiliación corporativa.
   Future<void> approveRequest(String userId) async {
     try {
+      // Al aprobar, el company_id ya está guardado desde la solicitud.
+      // Solo actualizamos el estado y el rol.
       await _db.from('users').update({
         'role': 'employee',
         'estado_solicitud': 'aprobado',
@@ -181,9 +183,12 @@ class AdminRepository {
   /// Rechazar solicitud de afiliación corporativa.
   Future<void> rejectRequest(String userId) async {
     try {
+      // NO limpiamos company_id para mantener el historial en la lista.
+      // Solo cambiamos el estado para que la UI lo refleje.
       await _db.from('users').update({
         'estado_solicitud': 'rechazado',
-        'company_id': null,
+        'is_active': false,
+        'rol_solicitado': null,
       }).eq('id', userId);
     } catch (e) {
       throw Exception('Error al rechazar solicitud: $e');
