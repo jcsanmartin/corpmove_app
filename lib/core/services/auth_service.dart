@@ -169,12 +169,28 @@ class AuthService {
       photoUrl: user.photoURL,
     );
 
-    // Actualizar campos específicos de la solicitud en Supabase
-    await SupabaseService.client.from('users').update({
+    // Actualizar campos específicos de la solicitud en Supabase.
+    // Solo incluimos columnas que existen en la tabla 'users' del schema.
+    // Nota: 'company_name' NO existe en Supabase (solo company_id como FK).
+    final supabaseFields = <String, dynamic>{
       'rol_solicitado': rolSolicitado.name,
       'estado_solicitud': 'pendiente',
-      ...datosAdicionales,
-    }).eq('firebase_uid', user.uid);
+    };
+
+    // Mapear solo los campos válidos del schema de Supabase
+    const camposValidos = {
+      'company_id', 'full_name', 'phone', 'position', 'photo_url', 'notas',
+    };
+    for (final entry in datosAdicionales.entries) {
+      if (camposValidos.contains(entry.key)) {
+        supabaseFields[entry.key] = entry.value;
+      }
+    }
+
+    await SupabaseService.client
+        .from('users')
+        .update(supabaseFields)
+        .eq('firebase_uid', user.uid);
   }
 
   Future<void> cancelarSolicitud() async {

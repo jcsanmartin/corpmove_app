@@ -38,7 +38,7 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
               right: 20,
               child: SafeArea(child: _ToggleWrapper()),
             ),
-            
+
             // BottomSheet interactivo para la negociación
             const Positioned(
               bottom: 0,
@@ -80,17 +80,15 @@ class _ToggleWrapper extends StatelessWidget {
           currentMode: provider.currentMode,
           onModeChanged: (mode) {
             provider.setMode(mode);
-            
+
             // Opcional: mostrar un Snackbar indicando el cambio para la demo
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text(
-                  mode == TripMode.corporate 
-                      ? 'Modo Corporativo activado' 
-                      : 'Modo Personal activado'
-                ),
-                backgroundColor: mode == TripMode.corporate 
-                    ? const Color(0xFF00C853) 
+                content: Text(mode == TripMode.corporate
+                    ? 'Modo Corporativo activado'
+                    : 'Modo Personal activado'),
+                backgroundColor: mode == TripMode.corporate
+                    ? const Color(0xFF00C853)
                     : Colors.blue.shade700,
                 duration: const Duration(seconds: 1),
               ),

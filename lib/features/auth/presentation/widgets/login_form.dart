@@ -27,8 +27,6 @@ class _LoginFormState extends State<LoginForm> {
   @override
   void initState() {
     super.initState();
-    _emailController.text = 'admin@empresa.com';
-    _passwordController.text = '123456';
   }
 
   @override
@@ -51,9 +49,13 @@ class _LoginFormState extends State<LoginForm> {
         }
       } on FirebaseAuthException catch (e) {
         String message = 'Error al iniciar sesión';
-        if (e.code == 'user-not-found') message = 'No existe usuario con este correo';
-        else if (e.code == 'wrong-password') message = 'Contraseña incorrecta';
-        else if (e.code == 'invalid-email') message = 'Correo inválido';
+        if (e.code == 'user-not-found') {
+          message = 'No existe usuario con este correo';
+        } else if (e.code == 'wrong-password') {
+          message = 'Contraseña incorrecta';
+        } else if (e.code == 'invalid-email') {
+          message = 'Correo inválido';
+        }
         _showError(message);
       } catch (e) {
         _showError('Error: ${e.toString()}');
@@ -79,26 +81,19 @@ class _LoginFormState extends State<LoginForm> {
 
   Future<void> _navigateBasedOnRole(String uid) async {
     final role = await _authService.getUserRole(uid);
-    debugPrint('═══ LOGIN: UID $uid → Rol $role ═══');
+    debugPrint('═══ LOGIN: UID $uid → Rol desde Supabase: $role ═══');
 
     Widget screen;
     switch (role) {
       case UserRole.owner:
         screen = const OwnerDashboardScreen();
-        break;
       case UserRole.admin:
         screen = const CompanyAdminScreen();
-        break;
       case UserRole.driver:
         screen = const DriverHomeScreen();
-        break;
       case UserRole.employee:
         screen = const PassengerHomeScreen(isCorporateEnabled: true);
-        break;
       case UserRole.normal:
-        screen = const PassengerHomeScreen(isCorporateEnabled: false);
-        break;
-      default:
         screen = const PassengerHomeScreen(isCorporateEnabled: false);
     }
 
@@ -175,18 +170,6 @@ class _LoginFormState extends State<LoginForm> {
                 foregroundColor: Colors.black87,
               ),
             ),
-          ),
-          const SizedBox(height: 20),
-          const Text('Credenciales de prueba:', style: TextStyle(color: Colors.grey, fontSize: 13)),
-          const SizedBox(height: 5),
-          const Text(
-            '👤 Normal: usuario@email.com\n'
-            '🏢 Empleado: empleado@corpmove.com\n'
-            '🚖 Conductor: conductor@corpmove.com\n'
-            '📊 Admin: admin@empresa.com\n'
-            '👑 Owner: owner@corpmove.com',
-            style: TextStyle(color: Colors.grey, fontSize: 12),
-            textAlign: TextAlign.center,
           ),
         ],
       ),
