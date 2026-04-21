@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:corpmove_app/core/services/supabase_service.dart';
 import 'package:corpmove_app/core/utils/user_role.dart';
 import 'package:corpmove_app/features/admin/data/admin_repository.dart';
 
@@ -178,31 +179,9 @@ class AuthService {
 
   Future<void> cancelarSolicitud() async {
     final user = _auth.currentUser;
-    if (user == null) return;
-
-    // Firestore
-    await _firestore.collection('users').doc(user.uid).update({
-      'estado_solicitud': 'ninguno',
-      'rol_solicitado': FieldValue.delete(),
-    });
-
-    // Supabase
-    await SupabaseService.client.from('users').update({
-      'estado_solicitud': 'ninguno',
-      'rol_solicitado': null,
-    }).eq('firebase_uid', user.uid);
-  }
-
-  Stream<QuerySnapshot> getSolicitudesPendientes() {
-    return _firestore
-        .collection('users')
-        .where('estado_solicitud', isEqualTo: 'pendiente')
-        .snapshots();
-  }
-
-  Future<void> cancelarSolicitud() async {
-    final user = _auth.currentUser;
     if (user == null) throw Exception('No hay usuario autenticado');
+
+    // Firestore: limpiar todos los campos de la solicitud
     await _firestore.collection('users').doc(user.uid).update({
       'estado_solicitud': 'ninguno',
       'rol_solicitado': FieldValue.delete(),
@@ -216,6 +195,24 @@ class AuthService {
       'photo_url': FieldValue.delete(),
       'notas': FieldValue.delete(),
     });
+
+    // Supabase: limpiar campos de la solicitud
+    await SupabaseService.client.from('users').update({
+      'estado_solicitud': 'ninguno',
+      'rol_solicitado': null,
+      'company_id': null,
+      'full_name': null,
+      'phone': null,
+      'position': null,
+      'notas': null,
+    }).eq('firebase_uid', user.uid);
+  }
+
+  Stream<QuerySnapshot> getSolicitudesPendientes() {
+    return _firestore
+        .collection('users')
+        .where('estado_solicitud', isEqualTo: 'pendiente')
+        .snapshots();
   }
 
   Future<void> aprobarSolicitud(String uid, UserRole nuevoRol) async {
@@ -252,11 +249,19 @@ class AuthService {
 
   UserRole _roleFromString(String role) {
     switch (role) {
-      case 'owner': return UserRole.owner;
-      case 'admin': return UserRole.admin;
-      case 'driver': return UserRole.driver;
-      case 'employee': return UserRole.employee;
-      default: return UserRole.normal;
+      case 'owner':
+        return UserRole.owner;
+      case 'admin':
+        return UserRole.admin;
+      case 'driver':
+        return UserRole.driver;
+      case 'employee':
+        return UserRole.employee;
+      case 'normal':
+        return UserRole.normal;
+      case _:
+        // Valor desconocido: tratar como usuario normal
+        return UserRole.normal;
     }
   }
 }

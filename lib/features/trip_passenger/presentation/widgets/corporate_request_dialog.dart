@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:corpmove_app/core/services/auth_service.dart';
 import 'package:corpmove_app/core/utils/user_role.dart';
@@ -45,7 +45,7 @@ class _CorporateRequestDialogState extends State<CorporateRequestDialog> {
   Future<void> _pickImage() async {
     try {
       final pickedFile = await _picker.pickImage(
-        source: ImageSource.gallery, 
+        source: ImageSource.gallery,
         imageQuality: 50,
         maxWidth: 300,
         maxHeight: 300,
@@ -65,16 +65,20 @@ class _CorporateRequestDialogState extends State<CorporateRequestDialog> {
   Future<String?> _uploadImage(String uid) async {
     if (_imageFile == null) return null;
     try {
-      final ref = FirebaseStorage.instance.ref().child('corporate_requests').child('$uid.jpg');
+      final ref = FirebaseStorage.instance
+          .ref()
+          .child('corporate_requests')
+          .child('$uid.jpg');
       UploadTask uploadTask;
-      
+
       if (kIsWeb) {
         final bytes = await _imageFile!.readAsBytes();
-        uploadTask = ref.putData(bytes, SettableMetadata(contentType: 'image/jpeg'));
+        uploadTask =
+            ref.putData(bytes, SettableMetadata(contentType: 'image/jpeg'));
       } else {
         uploadTask = ref.putFile(File(_imageFile!.path));
       }
-      
+
       // Añadimos un timeout de 5 segundos para evitar que se congele (por ej. problemas de CORS en Web)
       final snapshot = await uploadTask.timeout(const Duration(seconds: 5));
       return await snapshot.ref.getDownloadURL();
@@ -86,17 +90,23 @@ class _CorporateRequestDialogState extends State<CorporateRequestDialog> {
 
   Future<void> _submitRequest() async {
     if (!_formKey.currentState!.validate()) return;
-    
+
     if (_imageFile == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Por favor, selecciona una foto de perfil.', style: TextStyle(color: Colors.white)), backgroundColor: Colors.red),
+        const SnackBar(
+            content: Text('Por favor, selecciona una foto de perfil.',
+                style: TextStyle(color: Colors.white)),
+            backgroundColor: Colors.red),
       );
       return;
     }
 
     if (_selectedCompanyId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Por favor, selecciona una empresa.', style: TextStyle(color: Colors.white)), backgroundColor: Colors.red),
+        const SnackBar(
+            content: Text('Por favor, selecciona una empresa.',
+                style: TextStyle(color: Colors.white)),
+            backgroundColor: Colors.red),
       );
       return;
     }
@@ -142,7 +152,9 @@ class _CorporateRequestDialogState extends State<CorporateRequestDialog> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al enviar solicitud: $e'), backgroundColor: Colors.red),
+          SnackBar(
+              content: Text('Error al enviar solicitud: $e'),
+              backgroundColor: Colors.red),
         );
       }
     } finally {
@@ -169,12 +181,16 @@ class _CorporateRequestDialogState extends State<CorporateRequestDialog> {
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.business, color: Color(0xFF0F172A), size: 28),
+                    const Icon(Icons.business,
+                        color: Color(0xFF0F172A), size: 28),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
                         'Afiliación Corporativa',
-                        style: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.w700, color: const Color(0xFF0F172A)),
+                        style: GoogleFonts.inter(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFF0F172A)),
                       ),
                     ),
                   ],
@@ -182,7 +198,8 @@ class _CorporateRequestDialogState extends State<CorporateRequestDialog> {
                 const SizedBox(height: 8),
                 Text(
                   'Completa tus datos para solicitar el beneficio a tu empresa.',
-                  style: GoogleFonts.inter(color: const Color(0xFF64748B), fontSize: 13),
+                  style: GoogleFonts.inter(
+                      color: const Color(0xFF64748B), fontSize: 13),
                 ),
                 const SizedBox(height: 24),
 
@@ -193,11 +210,15 @@ class _CorporateRequestDialogState extends State<CorporateRequestDialog> {
                       CircleAvatar(
                         radius: 50,
                         backgroundColor: Colors.grey.shade200,
-                        backgroundImage: _imageFile != null 
-                            ? (kIsWeb ? NetworkImage(_imageFile!.path) : FileImage(File(_imageFile!.path)) as ImageProvider)
+                        backgroundImage: _imageFile != null
+                            ? (kIsWeb
+                                ? NetworkImage(_imageFile!.path)
+                                : FileImage(File(_imageFile!.path))
+                                    as ImageProvider)
                             : null,
                         child: _imageFile == null
-                            ? const Icon(Icons.person, size: 50, color: Colors.grey)
+                            ? const Icon(Icons.person,
+                                size: 50, color: Colors.grey)
                             : null,
                       ),
                       Positioned(
@@ -211,7 +232,8 @@ class _CorporateRequestDialogState extends State<CorporateRequestDialog> {
                               color: Color(0xFF2563EB), // Blue 600
                               shape: BoxShape.circle,
                             ),
-                            child: const Icon(Icons.camera_alt, color: Colors.white, size: 20),
+                            child: const Icon(Icons.camera_alt,
+                                color: Colors.white, size: 20),
                           ),
                         ),
                       ),
@@ -226,7 +248,9 @@ class _CorporateRequestDialogState extends State<CorporateRequestDialog> {
                     if (snapshot.connectionState == ConnectionState.waiting) {
                       return const Center(child: CircularProgressIndicator());
                     }
-                    if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
+                    if (snapshot.hasError ||
+                        !snapshot.hasData ||
+                        snapshot.data!.isEmpty) {
                       return const Text('No hay empresas registradas.',
                           style: TextStyle(color: Colors.red));
                     }
@@ -247,8 +271,8 @@ class _CorporateRequestDialogState extends State<CorporateRequestDialog> {
                             borderSide: BorderSide.none),
                         enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(
-                                color: Color(0xFFE2E8F0))),
+                            borderSide:
+                                const BorderSide(color: Color(0xFFE2E8F0))),
                         focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: const BorderSide(
@@ -285,31 +309,49 @@ class _CorporateRequestDialogState extends State<CorporateRequestDialog> {
                   style: GoogleFonts.inter(color: const Color(0xFF0F172A)),
                   decoration: InputDecoration(
                     labelText: 'Nombre Completo',
-                    labelStyle: GoogleFonts.inter(color: const Color(0xFF64748B)),
-                    prefixIcon: const Icon(Icons.badge, color: Color(0xFF64748B)),
+                    labelStyle:
+                        GoogleFonts.inter(color: const Color(0xFF64748B)),
+                    prefixIcon:
+                        const Icon(Icons.badge, color: Color(0xFF64748B)),
                     filled: true,
                     fillColor: const Color(0xFFF8FAFC),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
-                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF2563EB), width: 1.5)),
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none),
+                    enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+                    focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(
+                            color: Color(0xFF2563EB), width: 1.5)),
                   ),
                   validator: (value) => value!.isEmpty ? 'Requerido' : null,
                 ),
                 const SizedBox(height: 16),
-                
+
                 TextFormField(
                   controller: _phoneController,
                   keyboardType: TextInputType.phone,
                   style: GoogleFonts.inter(color: const Color(0xFF0F172A)),
                   decoration: InputDecoration(
                     labelText: 'Teléfono',
-                    labelStyle: GoogleFonts.inter(color: const Color(0xFF64748B)),
-                    prefixIcon: const Icon(Icons.phone, color: Color(0xFF64748B)),
+                    labelStyle:
+                        GoogleFonts.inter(color: const Color(0xFF64748B)),
+                    prefixIcon:
+                        const Icon(Icons.phone, color: Color(0xFF64748B)),
                     filled: true,
                     fillColor: const Color(0xFFF8FAFC),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
-                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF2563EB), width: 1.5)),
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none),
+                    enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+                    focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(
+                            color: Color(0xFF2563EB), width: 1.5)),
                   ),
                   validator: (value) => value!.isEmpty ? 'Requerido' : null,
                 ),
@@ -320,13 +362,22 @@ class _CorporateRequestDialogState extends State<CorporateRequestDialog> {
                   style: GoogleFonts.inter(color: const Color(0xFF0F172A)),
                   decoration: InputDecoration(
                     labelText: 'Cargo o Departamento',
-                    labelStyle: GoogleFonts.inter(color: const Color(0xFF64748B)),
-                    prefixIcon: const Icon(Icons.work, color: Color(0xFF64748B)),
+                    labelStyle:
+                        GoogleFonts.inter(color: const Color(0xFF64748B)),
+                    prefixIcon:
+                        const Icon(Icons.work, color: Color(0xFF64748B)),
                     filled: true,
                     fillColor: const Color(0xFFF8FAFC),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
-                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF2563EB), width: 1.5)),
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none),
+                    enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+                    focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(
+                            color: Color(0xFF2563EB), width: 1.5)),
                   ),
                   validator: (value) => value!.isEmpty ? 'Requerido' : null,
                 ),
@@ -337,8 +388,12 @@ class _CorporateRequestDialogState extends State<CorporateRequestDialog> {
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     TextButton(
-                      onPressed: _isLoading ? null : () => Navigator.pop(context),
-                      child: Text('Cancelar', style: GoogleFonts.inter(color: const Color(0xFF64748B), fontWeight: FontWeight.w500)),
+                      onPressed:
+                          _isLoading ? null : () => Navigator.pop(context),
+                      child: Text('Cancelar',
+                          style: GoogleFonts.inter(
+                              color: const Color(0xFF64748B),
+                              fontWeight: FontWeight.w500)),
                     ),
                     const SizedBox(width: 8),
                     ElevatedButton(
@@ -347,12 +402,20 @@ class _CorporateRequestDialogState extends State<CorporateRequestDialog> {
                         backgroundColor: const Color(0xFF2563EB), // Blue 600
                         foregroundColor: Colors.white,
                         elevation: 0,
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 24, vertical: 14),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
                       ),
-                      child: _isLoading 
-                        ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                        : Text('Enviar Solicitud', style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
+                      child: _isLoading
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                  color: Colors.white, strokeWidth: 2))
+                          : Text('Enviar Solicitud',
+                              style: GoogleFonts.inter(
+                                  fontWeight: FontWeight.w600)),
                     ),
                   ],
                 ),
