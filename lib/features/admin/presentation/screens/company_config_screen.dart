@@ -330,7 +330,7 @@ class _CompanyConfigScreenState extends State<CompanyConfigScreen> {
                         style: GoogleFonts.inter(color: Colors.grey.shade600)),
                     trailing: Switch(
                       value: isActive,
-                      activeColor: Colors.indigo,
+                      activeThumbColor: Colors.indigo,
                       onChanged: (val) {
                         provider.toggleEmployeeStatus(
                             emp['uid'], emp['is_active'] ?? false);

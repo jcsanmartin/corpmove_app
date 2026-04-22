@@ -280,7 +280,7 @@ class _CorporateRequestDialogState extends State<CorporateRequestDialog> {
                       ),
                       style: GoogleFonts.inter(
                           color: const Color(0xFF0F172A), fontSize: 15),
-                      value: _selectedCompanyId,
+                      initialValue: _selectedCompanyId,
                       isExpanded: true,
                       items: companies.map((data) {
                         return DropdownMenuItem(

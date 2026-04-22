@@ -24,7 +24,9 @@ class _CompanyAdminScreenState extends State<CompanyAdminScreen> {
       child: Scaffold(
         backgroundColor: AppColors.scaffoldLight,
         appBar: AppBar(
-          title: Text('Panel Corporativo', style: GoogleFonts.inter(fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+          title: Text('Panel Corporativo',
+              style: GoogleFonts.inter(
+                  fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
           backgroundColor: AppColors.scaffoldLight,
           foregroundColor: AppColors.textPrimary,
           elevation: 0,
@@ -46,7 +48,8 @@ class _CompanyAdminScreenState extends State<CompanyAdminScreen> {
                       ),
                     ],
                   ),
-                  child: const Icon(Icons.menu_rounded, color: AppColors.textPrimary, size: 24),
+                  child: const Icon(Icons.menu_rounded,
+                      color: AppColors.textPrimary, size: 24),
                 ),
               ),
             ),
@@ -208,7 +211,9 @@ class _CompanyAdminScreenState extends State<CompanyAdminScreen> {
                     final isActive = emp['is_active'] == true ||
                         emp['estado_solicitud'] == 'aprobado';
                     return _buildEmployeeTile(
-                      emp['name'] ?? emp['display_name'] ?? 'Usuario sin nombre',
+                      emp['name'] ??
+                          emp['display_name'] ??
+                          'Usuario sin nombre',
                       emp['email'] ?? 'Sin correo',
                       isActive,
                       provider,
@@ -297,8 +302,8 @@ class _CompanyAdminScreenState extends State<CompanyAdminScreen> {
               Text(
                 'Descarga el detalle de todos los viajes corporativos realizados por tus empleados durante el último mes de facturación.',
                 textAlign: TextAlign.center,
-                style: GoogleFonts.inter(
-                    color: AppColors.textMuted, height: 1.5),
+                style:
+                    GoogleFonts.inter(color: AppColors.textMuted, height: 1.5),
               ),
               const SizedBox(height: 32),
               SizedBox(
@@ -499,7 +504,7 @@ class _CompanyAdminScreenState extends State<CompanyAdminScreen> {
                 ),
               ),
             );
-          }).toList(),
+          }),
       ],
     );
   }
@@ -533,8 +538,8 @@ class _CompanyAdminScreenState extends State<CompanyAdminScreen> {
               Text(
                 'Para comenzar a gestionar los beneficios corporativos de tus empleados, primero debes registrar tu empresa en la plataforma.',
                 textAlign: TextAlign.center,
-                style: GoogleFonts.inter(
-                    color: AppColors.textMuted, height: 1.5),
+                style:
+                    GoogleFonts.inter(color: AppColors.textMuted, height: 1.5),
               ),
               const SizedBox(height: 32),
               TextField(
@@ -888,7 +893,7 @@ class _CompanyAdminScreenState extends State<CompanyAdminScreen> {
             onChanged: (val) {
               provider.toggleEmployeeStatus(uid, isActive);
             },
-            activeColor: const Color(0xFF1A237E),
+            activeThumbColor: const Color(0xFF1A237E),
           ),
         ],
       ),
@@ -947,7 +952,8 @@ class _CompanyAdminScreenState extends State<CompanyAdminScreen> {
                 final email = emailController.text.trim();
                 if (name.isNotEmpty && email.isNotEmpty) {
                   if (isEdit) {
-                    provider.updateEmployee((employee['id'] ?? '').toString(), name, email);
+                    provider.updateEmployee(
+                        (employee['id'] ?? '').toString(), name, email);
                   } else {
                     provider.addEmployee(name, email);
                   }

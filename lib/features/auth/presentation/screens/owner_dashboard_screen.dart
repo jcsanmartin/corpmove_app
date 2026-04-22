@@ -14,7 +14,8 @@ class OwnerDashboardScreen extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: () {
-              Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+              Navigator.of(context)
+                  .pushNamedAndRemoveUntil('/', (route) => false);
             },
           ),
         ],
@@ -58,9 +59,11 @@ class OwnerDashboardScreen extends StatelessWidget {
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 10),
-                  _buildCompanyTile('CorpMove S.A.', 'admin@corpmove.com', true),
+                  _buildCompanyTile(
+                      'CorpMove S.A.', 'admin@corpmove.com', true),
                   _buildCompanyTile('Tech Solutions', 'admin@tech.com', true),
-                  _buildCompanyTile('Logística Express', 'admin@logex.com', false),
+                  _buildCompanyTile(
+                      'Logística Express', 'admin@logex.com', false),
                 ],
               ),
             ),
@@ -81,13 +84,13 @@ class OwnerDashboardScreen extends StatelessWidget {
                     title: const Text('Modo mantenimiento'),
                     value: false,
                     onChanged: (_) {},
-                    activeColor: const Color(0xFF1A237E),
+                    activeThumbColor: const Color(0xFF1A237E),
                   ),
                   SwitchListTile(
                     title: const Text('Habilitar registro público'),
                     value: true,
                     onChanged: (_) {},
-                    activeColor: const Color(0xFF1A237E),
+                    activeThumbColor: const Color(0xFF1A237E),
                   ),
                   ListTile(
                     title: const Text('Comisión por viaje'),
@@ -130,7 +133,7 @@ class OwnerDashboardScreen extends StatelessWidget {
       trailing: Switch(
         value: active,
         onChanged: (_) {},
-        activeColor: const Color(0xFF1A237E),
+        activeThumbColor: const Color(0xFF1A237E),
       ),
     );
   }

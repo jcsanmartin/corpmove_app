@@ -1,14 +1,15 @@
 // Archivo: android/build.gradle.kts
 
 plugins {
-    // Estas son las herramientas estándar de Android y Flutter
-    id("com.android.application") version "8.2.1" apply false
-    id("org.jetbrains.kotlin.android") version "1.8.22" apply false
-    id("dev.flutter.flutter-gradle-plugin") version "1.0.0" apply false
+    // Versiones sincronizadas (Android y Kotlin)
+    id("com.android.application") version "8.11.1" apply false
+    id("org.jetbrains.kotlin.android") version "2.2.20" apply false
     
-    // Esta es la pieza clave para que Firebase funcione
-    // Es el "traductor" que lee tu archivo google-services.json
-    id("com.google.gms.google-services") version "4.4.1" apply false
+    // Flutter sin versión (lo maneja solo)
+    id("dev.flutter.flutter-gradle-plugin") apply false
+    
+    // EL CAMBIO FINAL: Sincronizado a 4.3.15 para que deje de molestar
+    id("com.google.gms.google-services") version "4.3.15" apply false
 }
 
 allprojects {
@@ -18,7 +19,7 @@ allprojects {
     }
 }
 
-// Configuración de las carpetas de compilación (estándar en Flutter)
+// Configuración de las carpetas de compilación
 val newBuildDir: Directory = rootProject.layout.buildDirectory
     .dir("../../build")
     .get()
@@ -33,7 +34,7 @@ subprojects {
     project.evaluationDependsOn(":app")
 }
 
-// Tarea para limpiar el proyecto cuando hay errores raros
+// Tarea para limpiar el proyecto
 tasks.register<Delete>("clean") {
     delete(rootProject.layout.buildDirectory)
 }

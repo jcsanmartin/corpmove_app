@@ -10,7 +10,9 @@ class OwnerDashboardScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Panel del Dueño - CorpMove', style: GoogleFonts.inter(fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+        title: Text('Panel del Dueño - CorpMove',
+            style: GoogleFonts.inter(
+                fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
         backgroundColor: AppColors.scaffoldLight,
         foregroundColor: AppColors.textPrimary,
         elevation: 0,
@@ -32,7 +34,8 @@ class OwnerDashboardScreen extends StatelessWidget {
                     ),
                   ],
                 ),
-                child: const Icon(Icons.menu_rounded, color: AppColors.textPrimary, size: 24),
+                child: const Icon(Icons.menu_rounded,
+                    color: AppColors.textPrimary, size: 24),
               ),
             ),
           ),
@@ -90,9 +93,12 @@ class OwnerDashboardScreen extends StatelessWidget {
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 10),
-                  _buildCompanyTile(context, 'CorpMove S.A.', 'admin@corpmove.com', true),
-                  _buildCompanyTile(context, 'Tech Solutions', 'admin@tech.com', true),
-                  _buildCompanyTile(context, 'Logística Express', 'admin@logex.com', false),
+                  _buildCompanyTile(
+                      context, 'CorpMove S.A.', 'admin@corpmove.com', true),
+                  _buildCompanyTile(
+                      context, 'Tech Solutions', 'admin@tech.com', true),
+                  _buildCompanyTile(
+                      context, 'Logística Express', 'admin@logex.com', false),
                 ],
               ),
             ),
@@ -114,13 +120,13 @@ class OwnerDashboardScreen extends StatelessWidget {
                     title: const Text('Modo mantenimiento'),
                     value: false,
                     onChanged: (_) {},
-                    activeColor: AppColors.accentLime,
+                    activeThumbColor: AppColors.accentLime,
                   ),
                   SwitchListTile(
                     title: const Text('Habilitar registro público'),
                     value: true,
                     onChanged: (_) {},
-                    activeColor: AppColors.accentLime,
+                    activeThumbColor: AppColors.accentLime,
                   ),
                   ListTile(
                     title: const Text('Comisión por viaje'),
@@ -154,17 +160,22 @@ class OwnerDashboardScreen extends StatelessWidget {
               children: [
                 Container(
                   padding: const EdgeInsets.all(2),
-                  decoration: const BoxDecoration(color: AppColors.accentLime, shape: BoxShape.circle),
+                  decoration: const BoxDecoration(
+                      color: AppColors.accentLime, shape: BoxShape.circle),
                   child: const CircleAvatar(
                     radius: 30,
                     backgroundColor: AppColors.surfaceLight,
-                    child: Icon(Icons.admin_panel_settings_rounded, size: 36, color: AppColors.textPrimary),
+                    child: Icon(Icons.admin_panel_settings_rounded,
+                        size: 36, color: AppColors.textPrimary),
                   ),
                 ),
                 const SizedBox(height: 10),
                 Text(
                   'Dueño - CorpMove',
-                  style: GoogleFonts.inter(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.w700),
+                  style: GoogleFonts.inter(
+                      color: AppColors.textPrimary,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700),
                 ),
                 Text(
                   'owner@corpmove.com',
@@ -216,7 +227,8 @@ class OwnerDashboardScreen extends StatelessWidget {
             title: const Text('Cerrar sesión'),
             onTap: () {
               Navigator.pop(context);
-              Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+              Navigator.of(context)
+                  .pushNamedAndRemoveUntil('/', (route) => false);
             },
           ),
         ],
@@ -240,22 +252,27 @@ class OwnerDashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildCompanyTile(BuildContext context, String name, String email, bool active) {
+  Widget _buildCompanyTile(
+      BuildContext context, String name, String email, bool active) {
     return ListTile(
       leading: CircleAvatar(
-        backgroundColor: active ? AppColors.success.withOpacity(0.1) : AppColors.borderSubtle,
-        child: Icon(Icons.business, color: active ? AppColors.success : AppColors.textMuted),
+        backgroundColor: active
+            ? AppColors.success.withOpacity(0.1)
+            : AppColors.borderSubtle,
+        child: Icon(Icons.business,
+            color: active ? AppColors.success : AppColors.textMuted),
       ),
       title: Text(
         name,
-        style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+        style: GoogleFonts.inter(
+            fontWeight: FontWeight.w600, color: AppColors.textPrimary),
       ),
       subtitle: Text(
         email,
         style: GoogleFonts.inter(color: AppColors.textMuted),
       ),
       trailing: const Icon(Icons.chevron_right, color: AppColors.textMuted),
-      
+
       // ESTO ES LO QUE HACE QUE EL CLIC FUNCIONE:
       onTap: () {
         Navigator.push(

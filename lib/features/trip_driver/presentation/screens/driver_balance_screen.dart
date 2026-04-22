@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:corpmove_app/core/theme/app_theme.dart';
-import 'package:corpmove_app/features/trip_driver/presentation/screens/driver_home_screen.dart';
 
 class DriverBalanceScreen extends StatefulWidget {
   const DriverBalanceScreen({super.key});
@@ -47,7 +46,8 @@ class _DriverBalanceScreenState extends State<DriverBalanceScreen> {
             // Estadísticas Rápidas
             Row(
               children: [
-                _buildMiniStat('Viajes', completedTrips.toString(), Icons.local_taxi),
+                _buildMiniStat(
+                    'Viajes', completedTrips.toString(), Icons.local_taxi),
                 const SizedBox(width: 16),
                 _buildMiniStat('Puntos', '4.9', Icons.star_rate_rounded),
               ],
@@ -145,7 +145,8 @@ class _DriverBalanceScreenState extends State<DriverBalanceScreen> {
                     ),
                     padding: const EdgeInsets.symmetric(vertical: 12),
                   ),
-                  child: const Text('Retirar Dinero', style: TextStyle(fontWeight: FontWeight.bold)),
+                  child: const Text('Retirar Dinero',
+                      style: TextStyle(fontWeight: FontWeight.bold)),
                 ),
               ),
             ],
@@ -180,7 +181,8 @@ class _DriverBalanceScreenState extends State<DriverBalanceScreen> {
                 ),
                 Text(
                   label,
-                  style: GoogleFonts.inter(color: AppColors.textMuted, fontSize: 12),
+                  style: GoogleFonts.inter(
+                      color: AppColors.textMuted, fontSize: 12),
                 ),
               ],
             ),
@@ -213,14 +215,17 @@ class _DriverBalanceScreenState extends State<DriverBalanceScreen> {
                 width: 12,
                 height: 100 * heights[index],
                 decoration: BoxDecoration(
-                  color: index == 3 ? const Color(0xFF1A237E) : Colors.blue.withOpacity(0.2),
+                  color: index == 3
+                      ? const Color(0xFF1A237E)
+                      : Colors.blue.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(10),
                 ),
               ),
               const SizedBox(height: 8),
               Text(
                 days[index],
-                style: GoogleFonts.inter(fontSize: 12, color: AppColors.textMuted),
+                style:
+                    GoogleFonts.inter(fontSize: 12, color: AppColors.textMuted),
               ),
             ],
           );
@@ -248,7 +253,9 @@ class _DriverBalanceScreenState extends State<DriverBalanceScreen> {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: isCorporate ? Colors.green.withOpacity(0.1) : Colors.blue.withOpacity(0.1),
+                  color: isCorporate
+                      ? Colors.green.withOpacity(0.1)
+                      : Colors.blue.withOpacity(0.1),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
@@ -268,7 +275,8 @@ class _DriverBalanceScreenState extends State<DriverBalanceScreen> {
                     ),
                     Text(
                       '12 Oct, 2023 • 4.5 km',
-                      style: GoogleFonts.inter(color: AppColors.textMuted, fontSize: 12),
+                      style: GoogleFonts.inter(
+                          color: AppColors.textMuted, fontSize: 12),
                     ),
                   ],
                 ),

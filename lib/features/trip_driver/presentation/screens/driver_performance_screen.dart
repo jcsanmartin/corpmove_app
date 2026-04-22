@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:corpmove_app/core/theme/app_theme.dart';
-import 'package:corpmove_app/features/trip_driver/presentation/screens/driver_home_screen.dart';
 
 class DriverPerformanceScreen extends StatelessWidget {
   const DriverPerformanceScreen({super.key});
@@ -31,7 +30,8 @@ class DriverPerformanceScreen extends StatelessWidget {
             // Estadísticas de Operación
             Text(
               'Estadísticas de Aceptación',
-              style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.bold),
+              style:
+                  GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
             _buildOperationStats(),
@@ -40,7 +40,8 @@ class DriverPerformanceScreen extends StatelessWidget {
             // Sección de Comentarios
             Text(
               'Lo que dicen los pasajeros',
-              style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.bold),
+              style:
+                  GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
             _buildFeedbackList(),
@@ -87,8 +88,11 @@ class DriverPerformanceScreen extends StatelessWidget {
   Widget _buildSimpleStat(String value, String label) {
     return Column(
       children: [
-        Text(value, style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 18)),
-        Text(label, style: GoogleFonts.inter(color: AppColors.textMuted, fontSize: 12)),
+        Text(value,
+            style:
+                GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 18)),
+        Text(label,
+            style: GoogleFonts.inter(color: AppColors.textMuted, fontSize: 12)),
       ],
     );
   }
@@ -111,7 +115,8 @@ class DriverPerformanceScreen extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(label, style: GoogleFonts.inter(fontWeight: FontWeight.w500)),
-            Text('${(value * 100).toInt()}%', style: const TextStyle(fontWeight: FontWeight.bold)),
+            Text('${(value * 100).toInt()}%',
+                style: const TextStyle(fontWeight: FontWeight.bold)),
           ],
         ),
         const SizedBox(height: 8),
@@ -151,11 +156,13 @@ class DriverPerformanceScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
-                children: List.generate(5, (i) => Icon(
-                  Icons.star_rounded, 
-                  size: 16, 
-                  color: i < (reviews[index]['stars'] as int) ? Colors.orange : Colors.grey.shade300
-                )),
+                children: List.generate(
+                    5,
+                    (i) => Icon(Icons.star_rounded,
+                        size: 16,
+                        color: i < (reviews[index]['stars'] as int)
+                            ? Colors.orange
+                            : Colors.grey.shade300)),
               ),
               const SizedBox(height: 8),
               Text(

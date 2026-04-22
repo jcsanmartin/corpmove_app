@@ -50,8 +50,10 @@ class _SignUpFormState extends State<SignUpForm> {
       }
     } on FirebaseAuthException catch (e) {
       String msg = 'Error al registrarse';
-      if (e.code == 'email-already-in-use') msg = 'Este correo ya está registrado';
-      else if (e.code == 'invalid-email') msg = 'Correo inválido';
+      if (e.code == 'email-already-in-use') {
+        msg = 'Este correo ya está registrado';
+      } else if (e.code == 'invalid-email')
+        msg = 'Correo inválido';
       else if (e.code == 'weak-password') msg = 'La contraseña es muy débil';
       _showError(msg);
     } catch (e) {
@@ -79,17 +81,28 @@ class _SignUpFormState extends State<SignUpForm> {
   void _navigateToRole(UserRole role) {
     Widget screen;
     switch (role) {
-      case UserRole.owner: screen = const OwnerDashboardScreen(); break;
-      case UserRole.admin: screen = const CompanyAdminScreen(); break;
-      case UserRole.driver: screen = const DriverHomeScreen(); break;
-      case UserRole.employee: screen = const PassengerHomeScreen(isCorporateEnabled: true); break;
-      default: screen = const PassengerHomeScreen(isCorporateEnabled: false);
+      case UserRole.owner:
+        screen = const OwnerDashboardScreen();
+        break;
+      case UserRole.admin:
+        screen = const CompanyAdminScreen();
+        break;
+      case UserRole.driver:
+        screen = const DriverHomeScreen();
+        break;
+      case UserRole.employee:
+        screen = const PassengerHomeScreen(isCorporateEnabled: true);
+        break;
+      default:
+        screen = const PassengerHomeScreen(isCorporateEnabled: false);
     }
-    Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => screen));
+    Navigator.pushReplacement(
+        context, MaterialPageRoute(builder: (_) => screen));
   }
 
   void _showError(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), backgroundColor: Colors.red));
+    ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(msg), backgroundColor: Colors.red));
   }
 
   @override
@@ -100,15 +113,22 @@ class _SignUpFormState extends State<SignUpForm> {
         children: [
           TextFormField(
             controller: _nameController,
-            decoration: const InputDecoration(labelText: 'Nombre completo', prefixIcon: Icon(Icons.person_outline)),
-            validator: (v) => (v == null || v.isEmpty) ? 'Ingresa tu nombre' : null,
+            decoration: const InputDecoration(
+                labelText: 'Nombre completo',
+                prefixIcon: Icon(Icons.person_outline)),
+            validator: (v) =>
+                (v == null || v.isEmpty) ? 'Ingresa tu nombre' : null,
           ),
           const SizedBox(height: 20),
           TextFormField(
             controller: _emailController,
             keyboardType: TextInputType.emailAddress,
-            decoration: const InputDecoration(labelText: 'Correo electrónico', prefixIcon: Icon(Icons.email_outlined)),
-            validator: (v) => (v == null || v.isEmpty) ? 'Ingresa tu correo' : (!v.contains('@') ? 'Correo inválido' : null),
+            decoration: const InputDecoration(
+                labelText: 'Correo electrónico',
+                prefixIcon: Icon(Icons.email_outlined)),
+            validator: (v) => (v == null || v.isEmpty)
+                ? 'Ingresa tu correo'
+                : (!v.contains('@') ? 'Correo inválido' : null),
           ),
           const SizedBox(height: 20),
           TextFormField(
@@ -118,11 +138,16 @@ class _SignUpFormState extends State<SignUpForm> {
               labelText: 'Contraseña',
               prefixIcon: const Icon(Icons.lock_outline),
               suffixIcon: IconButton(
-                icon: Icon(_isPasswordVisible ? Icons.visibility_off : Icons.visibility),
-                onPressed: () => setState(() => _isPasswordVisible = !_isPasswordVisible),
+                icon: Icon(_isPasswordVisible
+                    ? Icons.visibility_off
+                    : Icons.visibility),
+                onPressed: () =>
+                    setState(() => _isPasswordVisible = !_isPasswordVisible),
               ),
             ),
-            validator: (v) => (v == null || v.isEmpty) ? 'Ingresa una contraseña' : (v.length < 6 ? 'Mínimo 6 caracteres' : null),
+            validator: (v) => (v == null || v.isEmpty)
+                ? 'Ingresa una contraseña'
+                : (v.length < 6 ? 'Mínimo 6 caracteres' : null),
           ),
           const SizedBox(height: 20),
           TextFormField(
@@ -132,11 +157,18 @@ class _SignUpFormState extends State<SignUpForm> {
               labelText: 'Confirmar contraseña',
               prefixIcon: const Icon(Icons.lock_outline),
               suffixIcon: IconButton(
-                icon: Icon(_isConfirmVisible ? Icons.visibility_off : Icons.visibility),
-                onPressed: () => setState(() => _isConfirmVisible = !_isConfirmVisible),
+                icon: Icon(_isConfirmVisible
+                    ? Icons.visibility_off
+                    : Icons.visibility),
+                onPressed: () =>
+                    setState(() => _isConfirmVisible = !_isConfirmVisible),
               ),
             ),
-            validator: (v) => (v == null || v.isEmpty) ? 'Confirma tu contraseña' : (v != _passwordController.text ? 'Las contraseñas no coinciden' : null),
+            validator: (v) => (v == null || v.isEmpty)
+                ? 'Confirma tu contraseña'
+                : (v != _passwordController.text
+                    ? 'Las contraseñas no coinciden'
+                    : null),
           ),
           const SizedBox(height: 30),
           SizedBox(
@@ -144,20 +176,33 @@ class _SignUpFormState extends State<SignUpForm> {
             child: ElevatedButton(
               onPressed: _isLoading ? null : _signUp,
               child: _isLoading
-                  ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
-                  : const Text('Registrarse', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+                  ? const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(
+                          color: Colors.white, strokeWidth: 2.5))
+                  : const Text('Registrarse',
+                      style:
+                          TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
             ),
           ),
           const SizedBox(height: 15),
-          const Text('— O regístrate con —', style: TextStyle(color: Colors.grey)),
+          const Text('— O regístrate con —',
+              style: TextStyle(color: Colors.grey)),
           const SizedBox(height: 15),
           SizedBox(
             width: double.infinity,
             child: OutlinedButton.icon(
               onPressed: _isLoading ? null : _signUpWithGoogle,
               icon: _isLoading
-                  ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2.5))
-                  : Image.network('https://img.icons8.com/color/48/000000/google-logo.png', width: 24, height: 24),
+                  ? const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(strokeWidth: 2.5))
+                  : Image.network(
+                      'https://img.icons8.com/color/48/000000/google-logo.png',
+                      width: 24,
+                      height: 24),
               label: const Text('Google'),
               style: OutlinedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 14),

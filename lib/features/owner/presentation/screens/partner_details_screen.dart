@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:corpmove_app/core/theme/app_theme.dart';
-import 'package:corpmove_app/features/owner/presentation/screens/owner_dashboard_screen.dart';
+
 
 class PartnerDetailsScreen extends StatefulWidget {
   final String partnerName;
@@ -127,7 +127,8 @@ class _PartnerDetailsScreenState extends State<PartnerDetailsScreen> {
           CircleAvatar(
             radius: 35,
             backgroundColor: AppColors.borderSubtle,
-            child: const Icon(Icons.business_rounded, size: 40, color: AppColors.textPrimary),
+            child: const Icon(Icons.business_rounded,
+                size: 40, color: AppColors.textPrimary),
           ),
           const SizedBox(width: 20),
           Expanded(
@@ -148,9 +149,12 @@ class _PartnerDetailsScreenState extends State<PartnerDetailsScreen> {
                 ),
                 const SizedBox(height: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: isActive ? AppColors.success.withOpacity(0.1) : AppColors.error.withOpacity(0.1),
+                    color: isActive
+                        ? AppColors.success.withOpacity(0.1)
+                        : AppColors.error.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
@@ -193,7 +197,8 @@ class _PartnerDetailsScreenState extends State<PartnerDetailsScreen> {
             ),
             Text(
               label,
-              style: GoogleFonts.inter(color: AppColors.textMuted, fontSize: 12),
+              style:
+                  GoogleFonts.inter(color: AppColors.textMuted, fontSize: 12),
             ),
           ],
         ),
@@ -205,16 +210,19 @@ class _PartnerDetailsScreenState extends State<PartnerDetailsScreen> {
     return Column(
       children: [
         SwitchListTile(
-          title: Text('Estado del servicio', style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
-          subtitle: const Text('Habilita o deshabilita el acceso a viajes corporativos'),
+          title: Text('Estado del servicio',
+              style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
+          subtitle: const Text(
+              'Habilita o deshabilita el acceso a viajes corporativos'),
           value: isActive,
-          activeColor: AppColors.success,
+          activeThumbColor: AppColors.success,
           onChanged: (val) {
             setState(() => isActive = val);
           },
         ),
         ListTile(
-          title: Text('Comisión de plataforma', style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
+          title: Text('Comisión de plataforma',
+              style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
           subtitle: const Text('Porcentaje cobrado por cada viaje realizado'),
           trailing: Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
