@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:corpmove_app/core/theme/app_theme.dart';
+import 'package:corpmove_app/features/owner/presentation/screens/partner_details_screen.dart';
 
 class OwnerDashboardScreen extends StatelessWidget {
   const OwnerDashboardScreen({super.key});
@@ -89,9 +90,9 @@ class OwnerDashboardScreen extends StatelessWidget {
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 10),
-                  _buildCompanyTile('CorpMove S.A.', 'admin@corpmove.com', true),
-                  _buildCompanyTile('Tech Solutions', 'admin@tech.com', true),
-                  _buildCompanyTile('Logística Express', 'admin@logex.com', false),
+                  _buildCompanyTile(context, 'CorpMove S.A.', 'admin@corpmove.com', true),
+                  _buildCompanyTile(context, 'Tech Solutions', 'admin@tech.com', true),
+                  _buildCompanyTile(context, 'Logística Express', 'admin@logex.com', false),
                 ],
               ),
             ),
@@ -239,19 +240,35 @@ class OwnerDashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildCompanyTile(String name, String email, bool active) {
+  Widget _buildCompanyTile(BuildContext context, String name, String email, bool active) {
     return ListTile(
       leading: CircleAvatar(
         backgroundColor: active ? AppColors.success.withOpacity(0.1) : AppColors.borderSubtle,
         child: Icon(Icons.business, color: active ? AppColors.success : AppColors.textMuted),
       ),
-      title: Text(name),
-      subtitle: Text(email),
-      trailing: Switch(
-        value: active,
-        onChanged: (_) {},
-        activeColor: AppColors.accentLime,
+      title: Text(
+        name,
+        style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: AppColors.textPrimary),
       ),
+      subtitle: Text(
+        email,
+        style: GoogleFonts.inter(color: AppColors.textMuted),
+      ),
+      trailing: const Icon(Icons.chevron_right, color: AppColors.textMuted),
+      
+      // ESTO ES LO QUE HACE QUE EL CLIC FUNCIONE:
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => PartnerDetailsScreen(
+              partnerName: name,
+              partnerEmail: email,
+              initialStatus: active,
+            ),
+          ),
+        );
+      },
     );
   }
 }
