@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:corpmove_app/core/theme/app_theme.dart';
@@ -9,6 +10,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart' as mbx;
 import 'package:geolocator/geolocator.dart';
+import 'package:http/http.dart' as http;
+
+const String MAPBOX_TOKEN = "pk.eyJ1IjoiamNzYW5tYXJ0aW4iLCJhIjoiY21vYWJsZmUzMDR5eTJ4cTA5MmFvbmJpbSJ9.OZtHCg1w7y-HUow9Cl9Vsw";
 
 class PassengerHomeScreen extends StatefulWidget {
   final bool isCorporateEnabled;
@@ -36,6 +40,9 @@ class _PassengerHomeScreenState extends State<PassengerHomeScreen> {
   int _tripsRemaining = 0;
 
   mbx.MapboxMap? _mapController;
+  Position? _currentPosition;
+  
+  String? _destinationName;
 
   @override
   void initState() {
@@ -55,7 +62,6 @@ class _PassengerHomeScreenState extends State<PassengerHomeScreen> {
     try {
       final supabase = Supabase.instance.client;
 
-      // 1. Obtener datos del usuario
       final userData = await supabase
           .from('users')
           .select()
@@ -66,13 +72,11 @@ class _PassengerHomeScreenState extends State<PassengerHomeScreen> {
         _displayName = userData['display_name'] ?? 'Usuario';
         _userRole = userData['role'] ?? 'normal';
 
-        // Si su rol es corporativo, obtenemos los datos de la empresa y viajes
         if (_userRole == 'corporativo') {
-          _isCorporateMode = true; // Forzamos vista si es verdaderamente corporativo
+          _isCorporateMode = true; 
           final companyId = userData['company_id'];
 
           if (companyId != null) {
-            // 2. Traer el límite corporativo
             final companyData = await supabase
                 .from('companies')
                 .select()
@@ -84,7 +88,6 @@ class _PassengerHomeScreenState extends State<PassengerHomeScreen> {
               _dailyTripsLimit = (companyData['daily_trips_limit'] as num?)?.toInt() ?? 0;
             }
 
-            // 3. Contar viajes de hoy
             final now = DateTime.now();
             final startOfDay = DateTime(now.year, now.month, now.day).toIso8601String();
 
@@ -95,8 +98,6 @@ class _PassengerHomeScreenState extends State<PassengerHomeScreen> {
                 .gte('created_at', startOfDay);
 
             final tripsToday = tripsData.length;
-
-            // 4. Calcular viajes restantes
             _tripsRemaining = (_dailyTripsLimit - tripsToday).clamp(0, _dailyTripsLimit);
           }
         } else {
@@ -117,30 +118,17 @@ class _PassengerHomeScreenState extends State<PassengerHomeScreen> {
   }
 
   Future<void> _requestLocationPermission() async {
-    bool serviceEnabled;
-    LocationPermission permission;
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) return;
 
-    serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
-      debugPrint('Los servicios de ubicación están deshabilitados.');
-      return;
-    }
-
-    permission = await Geolocator.checkPermission();
+    LocationPermission permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) {
-        debugPrint('Los permisos de ubicación fueron denegados.');
-        return;
-      }
+      if (permission == LocationPermission.denied) return;
     }
 
-    if (permission == LocationPermission.deniedForever) {
-      debugPrint('Los permisos de ubicación están denegados permanentemente.');
-      return;
-    }
+    if (permission == LocationPermission.deniedForever) return;
 
-    // Centrar mapa si ya cargó
     if (_mapController != null) {
       _centerMapOnUser();
     }
@@ -149,19 +137,134 @@ class _PassengerHomeScreenState extends State<PassengerHomeScreen> {
   Future<void> _centerMapOnUser() async {
     try {
       Position position = await Geolocator.getCurrentPosition();
+      _currentPosition = position;
       
       _mapController?.setCamera(mbx.CameraOptions(
         center: mbx.Point(coordinates: mbx.Position(position.longitude, position.latitude)),
         zoom: 15.0,
       ));
 
-      // Habilitar la visualización de la ubicación nativa
       _mapController?.location.updateSettings(mbx.LocationComponentSettings(
         enabled: true,
         pulsingEnabled: true,
       ));
     } catch (e) {
       debugPrint('Error centrando el mapa: $e');
+    }
+  }
+
+  Future<void> _getRoute(mbx.Position destination) async {
+    if (_currentPosition == null) return;
+    
+    final originLon = _currentPosition!.longitude;
+    final originLat = _currentPosition!.latitude;
+    final destLon = destination.lng;
+    final destLat = destination.lat;
+
+    final url = Uri.parse(
+        'https://api.mapbox.com/directions/v5/mapbox/driving/$originLon,$originLat;$destLon,$destLat?geometries=geojson&access_token=$MAPBOX_TOKEN');
+    
+    try {
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        final json = jsonDecode(response.body);
+        final route = json['routes'][0];
+        final geometry = route['geometry'];
+        
+        final feature = {
+          "type": "Feature",
+          "geometry": geometry,
+          "properties": {}
+        };
+        final geojsonString = jsonEncode(feature);
+
+        // Remover capas previas
+        if (await _mapController?.style.styleSourceExists("route-source") == true) {
+          await _mapController?.style.removeStyleLayer("route-layer");
+          await _mapController?.style.removeStyleSource("route-source");
+        }
+        
+        // Agregar origen de datos
+        await _mapController?.style.addSource(
+          mbx.GeoJsonSource(id: "route-source", data: geojsonString)
+        );
+        
+        // Agregar capa visible
+        await _mapController?.style.addLayer(
+          mbx.LineLayer(
+            id: "route-layer",
+            sourceId: "route-source",
+            lineColor: Colors.blue.value,
+            lineWidth: 5.0,
+            lineJoin: mbx.LineJoin.ROUND,
+            lineCap: mbx.LineCap.ROUND,
+          )
+        );
+
+        // Calcular límites para enfocar toda la ruta
+        double minLat = originLat;
+        double maxLat = originLat;
+        double minLon = originLon;
+        double maxLon = originLon;
+
+        final coords = geometry['coordinates'] as List;
+        for (var coord in coords) {
+          final lon = coord[0];
+          final lat = coord[1];
+          if (lat < minLat) minLat = lat;
+          if (lat > maxLat) maxLat = lat;
+          if (lon < minLon) minLon = lon;
+          if (lon > maxLon) maxLon = lon;
+        }
+        
+        final bounds = mbx.CoordinateBounds(
+          southwest: mbx.Point(coordinates: mbx.Position(minLon, minLat)),
+          northeast: mbx.Point(coordinates: mbx.Position(maxLon, maxLat)),
+          infiniteBounds: false,
+        );
+        
+        final cameraOptions = await _mapController?.cameraForCoordinateBounds(
+          bounds, 
+          mbx.MbxEdgeInsets(top: 50, left: 50, bottom: 400, right: 50),
+          null, null, null, null
+        );
+
+        if (cameraOptions != null) {
+          _mapController?.setCamera(cameraOptions);
+        }
+
+      }
+    } catch (e) {
+      debugPrint('Error dibujando ruta: $e');
+    }
+  }
+
+  void _openSearchBottomSheet() async {
+    if (_currentPosition == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Obteniendo ubicación... intenta de nuevo.')),
+      );
+      await _centerMapOnUser();
+      return;
+    }
+
+    final result = await showModalBottomSheet<Map<String, dynamic>>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return SearchLocationSheet(
+          currentPosition: _currentPosition!,
+        );
+      },
+    );
+
+    if (result != null) {
+      final destPosition = result['destination'] as mbx.Position;
+      setState(() {
+        _destinationName = result['placeName'];
+      });
+      await _getRoute(destPosition);
     }
   }
 
@@ -173,7 +276,6 @@ class _PassengerHomeScreenState extends State<PassengerHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Es posible que el setState asíncrono actualice las pantallas
     _screens[0] = _buildHomeTab();
 
     return Scaffold(
@@ -255,22 +357,6 @@ class _PassengerHomeScreenState extends State<PassengerHomeScreen> {
             ),
           ),
           ListTile(
-            leading: const Icon(Icons.account_circle_rounded, color: AppColors.textPrimary),
-            title: Text('Mi cuenta', style: GoogleFonts.inter(fontWeight: FontWeight.w500)),
-            onTap: () {
-              Navigator.pop(context);
-              setState(() => _selectedIndex = 2);
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.settings_rounded, color: AppColors.textPrimary),
-            title: Text('Configuración', style: GoogleFonts.inter(fontWeight: FontWeight.w500)),
-            onTap: () {
-              Navigator.pop(context);
-            },
-          ),
-          const Divider(color: AppColors.borderSubtle),
-          ListTile(
             leading: const Icon(Icons.logout_rounded, color: AppColors.error),
             title: Text('Cerrar sesión', style: GoogleFonts.inter(color: AppColors.error, fontWeight: FontWeight.w500)),
             onTap: () async {
@@ -289,25 +375,21 @@ class _PassengerHomeScreenState extends State<PassengerHomeScreen> {
   Widget _buildHomeTab() {
     return Stack(
       children: [
-        // Mapa al fondo
         Positioned.fill(
           child: CustomMapMapbox(
             onMapCreated: (controller) {
               _mapController = controller;
-              // Si ya se dieron permisos, centramos de inmediato
               _centerMapOnUser();
             },
           ),
         ),
 
-        // Top bar con menú y bienvenida flotante
         SafeArea(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 12),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Menú hamburgesa flotante
                 GestureDetector(
                   onTap: () => _scaffoldKey.currentState?.openDrawer(),
                   child: Container(
@@ -328,7 +410,6 @@ class _PassengerHomeScreenState extends State<PassengerHomeScreen> {
                   ),
                 ),
                 const SizedBox(width: 16),
-                // Texto de Bienvenida Dinámico
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.only(top: 8),
@@ -341,9 +422,7 @@ class _PassengerHomeScreenState extends State<PassengerHomeScreen> {
                             fontSize: 22,
                             fontWeight: FontWeight.w700,
                             color: const Color(0xFFF0F0F0),
-                            shadows: [
-                              Shadow(color: Colors.black.withOpacity(0.6), blurRadius: 12),
-                            ],
+                            shadows: [Shadow(color: Colors.black.withOpacity(0.6), blurRadius: 12)],
                           ),
                         ),
                         _isLoading
@@ -363,9 +442,7 @@ class _PassengerHomeScreenState extends State<PassengerHomeScreen> {
                                   fontWeight: FontWeight.w900,
                                   color: Colors.white,
                                   letterSpacing: -0.5,
-                                  shadows: [
-                                    Shadow(color: Colors.black.withOpacity(0.6), blurRadius: 12),
-                                  ],
+                                  shadows: [Shadow(color: Colors.black.withOpacity(0.6), blurRadius: 12)],
                                 ),
                               ),
                       ],
@@ -377,14 +454,12 @@ class _PassengerHomeScreenState extends State<PassengerHomeScreen> {
           ),
         ),
 
-        // Bottom Sheet "Hacia dónde vas" y "Qué servicio deseas"
         Align(
           alignment: Alignment.bottomCenter,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              // Botón Mi ubicación flotante reubicado por encima de la tarjeta
               Padding(
                 padding: const EdgeInsets.only(right: 20, bottom: 16),
                 child: FloatingActionButton(
@@ -400,7 +475,6 @@ class _PassengerHomeScreenState extends State<PassengerHomeScreen> {
                 ),
               ),
               
-              // Contenedor principal de la tarjeta negra
               Container(
                 width: double.infinity,
                 decoration: AppDecorations.bottomSheet,
@@ -415,7 +489,6 @@ class _PassengerHomeScreenState extends State<PassengerHomeScreen> {
                     : Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          // Grabber
                           Container(
                             width: 36,
                             height: 4,
@@ -426,17 +499,40 @@ class _PassengerHomeScreenState extends State<PassengerHomeScreen> {
                           ),
                           const SizedBox(height: 24),
 
-                          Text(
-                            '¿Hacia a dónde vas?',
-                            style: GoogleFonts.inter(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w800,
-                              color: AppColors.textPrimary,
+                          // Mostrar el destino seleccionado o el botón de búsqueda
+                          if (_destinationName != null) ...[
+                            Row(
+                              children: [
+                                const Icon(Icons.location_on, color: AppColors.error),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    _destinationName!,
+                                    style: GoogleFonts.inter(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.textPrimary,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.close, color: AppColors.textMuted),
+                                  onPressed: () {
+                                    setState(() {
+                                      _destinationName = null;
+                                    });
+                                    _mapController?.style.removeStyleLayer("route-layer");
+                                    _mapController?.style.removeStyleSource("route-source");
+                                    _centerMapOnUser();
+                                  },
+                                )
+                              ],
                             ),
-                          ),
-                          const SizedBox(height: 20),
+                            const Divider(color: AppColors.borderSubtle),
+                          ],
 
-                          // Selector de Modo (Personal / Corporativo) si tiene rol
                           if (_userRole == 'corporativo')
                             DualModeSelector(
                               isCorporateMode: _isCorporateMode,
@@ -464,44 +560,55 @@ class _PassengerHomeScreenState extends State<PassengerHomeScreen> {
 
                           const SizedBox(height: 24),
 
-                          // Botón principal "Solicitar Viaje"
                           SizedBox(
                             width: double.infinity,
                             child: ElevatedButton(
-                              onPressed: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => NegotiationRadarScreen(
-                                      isCorporateMode: _isCorporateMode,
-                                      techoCobertura: _isCorporateMode ? _techoCobertura : 0.0,
-                                    ),
-                                  ),
-                                );
-                              },
+                              onPressed: _destinationName == null 
+                                ? _openSearchBottomSheet 
+                                : () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => NegotiationRadarScreen(
+                                          isCorporateMode: _isCorporateMode,
+                                          techoCobertura: _isCorporateMode ? _techoCobertura : 0.0,
+                                        ),
+                                      ),
+                                    );
+                                  },
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.accentLime,
-                                foregroundColor: AppColors.textOnAccent,
+                                backgroundColor: _destinationName == null ? AppColors.surfaceLight : AppColors.accentLime,
+                                foregroundColor: _destinationName == null ? AppColors.textPrimary : AppColors.textOnAccent,
                                 padding: const EdgeInsets.symmetric(vertical: 18),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  side: _destinationName == null ? const BorderSide(color: AppColors.borderSubtle) : BorderSide.none,
+                                ),
                                 elevation: 0,
                               ),
-                              child: Text(
-                                _isCorporateMode ? 'Solicitar Viaje Corp' : 'Solicitar Viaje',
-                                style: GoogleFonts.inter(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w800,
-                                ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(_destinationName == null ? Icons.search : Icons.local_taxi, size: 20),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    _destinationName == null 
+                                      ? '¿A dónde y por cuánto?' 
+                                      : (_isCorporateMode ? 'Solicitar Viaje Corp' : 'Solicitar Viaje'),
+                                    style: GoogleFonts.inter(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ),
 
-                          // Avisos dinámicos para Corporativo
                           if (_isCorporateMode) ...[
                             const SizedBox(height: 16),
                             Row(
                               children: [
-                                // Techo cobertura
                                 Expanded(
                                   child: Container(
                                     padding: const EdgeInsets.all(12),
@@ -531,7 +638,6 @@ class _PassengerHomeScreenState extends State<PassengerHomeScreen> {
                                   ),
                                 ),
                                 const SizedBox(width: 12),
-                                // Viajes restantes
                                 Expanded(
                                   child: Container(
                                     padding: const EdgeInsets.all(12),
@@ -576,7 +682,6 @@ class _PassengerHomeScreenState extends State<PassengerHomeScreen> {
 
 class _HistoryTab extends StatelessWidget {
   const _HistoryTab();
-
   @override
   Widget build(BuildContext context) {
     return Center(
@@ -596,6 +701,153 @@ class _HistoryTab extends StatelessWidget {
           Text(
             'Próximamente...',
             style: GoogleFonts.inter(color: AppColors.textMuted),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ----------------------------------------------------
+// BOTTOM SHEET PARA BUSCAR DIRECCIÓN CON MAPBOX GEOCODING
+// ----------------------------------------------------
+
+class SearchLocationSheet extends StatefulWidget {
+  final Position currentPosition;
+
+  const SearchLocationSheet({
+    required this.currentPosition,
+    super.key,
+  });
+
+  @override
+  State<SearchLocationSheet> createState() => _SearchLocationSheetState();
+}
+
+class _SearchLocationSheetState extends State<SearchLocationSheet> {
+  final TextEditingController _searchController = TextEditingController();
+  List<dynamic> _places = [];
+  bool _isSearching = false;
+
+  Future<void> _searchPlaces(String query) async {
+    if (query.trim().isEmpty) {
+      setState(() => _places = []);
+      return;
+    }
+
+    setState(() => _isSearching = true);
+
+    final lon = widget.currentPosition.longitude;
+    final lat = widget.currentPosition.latitude;
+    
+    final url = Uri.parse(
+        'https://api.mapbox.com/geocoding/v5/mapbox.places/${Uri.encodeComponent(query)}.json?proximity=$lon,$lat&access_token=$MAPBOX_TOKEN&language=es');
+
+    try {
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        final json = jsonDecode(response.body);
+        setState(() {
+          _places = json['features'] ?? [];
+        });
+      }
+    } catch (e) {
+      debugPrint('Error en geocoding: $e');
+    } finally {
+      if (mounted) {
+        setState(() => _isSearching = false);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.85,
+      decoration: const BoxDecoration(
+        color: AppColors.surfaceLight,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: Column(
+        children: [
+          const SizedBox(height: 12),
+          // Grabber
+          Container(
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: AppColors.borderAccent,
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+          const SizedBox(height: 16),
+          // Campo de búsqueda
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: TextField(
+              controller: _searchController,
+              autofocus: true,
+              style: GoogleFonts.inter(color: AppColors.textPrimary),
+              onChanged: _searchPlaces,
+              decoration: InputDecoration(
+                hintText: 'Buscar destino...',
+                hintStyle: GoogleFonts.inter(color: AppColors.textMuted),
+                prefixIcon: const Icon(Icons.search, color: AppColors.textMuted),
+                suffixIcon: _searchController.text.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear, color: AppColors.textMuted),
+                        onPressed: () {
+                          _searchController.clear();
+                          _searchPlaces('');
+                        },
+                      )
+                    : null,
+                filled: true,
+                fillColor: AppColors.cardLight,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          if (_isSearching)
+            const Padding(
+              padding: EdgeInsets.all(20),
+              child: CircularProgressIndicator(color: AppColors.accentLime),
+            ),
+          Expanded(
+            child: ListView.builder(
+              itemCount: _places.length,
+              itemBuilder: (context, index) {
+                final place = _places[index];
+                final placeName = place['text'] ?? '';
+                final placeAddress = place['place_name'] ?? '';
+                
+                return ListTile(
+                  leading: const Icon(Icons.location_on, color: AppColors.textMuted),
+                  title: Text(
+                    placeName,
+                    style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                  ),
+                  subtitle: Text(
+                    placeAddress,
+                    style: GoogleFonts.inter(color: AppColors.textSecondary, fontSize: 12),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  onTap: () {
+                    final coords = place['center']; // [longitude, latitude]
+                    final dest = mbx.Position(coords[0], coords[1]);
+                    Navigator.pop(context, {
+                      'destination': dest,
+                      'placeName': placeAddress,
+                    });
+                  },
+                );
+              },
+            ),
           ),
         ],
       ),
