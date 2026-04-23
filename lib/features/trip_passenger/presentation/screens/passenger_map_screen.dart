@@ -16,7 +16,7 @@ class PassengerMapScreen extends StatefulWidget {
 }
 
 class _PassengerMapScreenState extends State<PassengerMapScreen> {
-  mbx.MapboxMap? _mapController;
+
   final GlobalKey<CustomMapMapboxState> _mapKey = GlobalKey();
 
   // Ubicación inicial (Bogotá, Colombia)
@@ -60,7 +60,7 @@ class _PassengerMapScreenState extends State<PassengerMapScreen> {
       initialLat: _lat,
       initialLng: _lng,
       onMapCreated: (controller) {
-        _mapController = controller;
+
         // Prueba: Colocar marcador en ubicación inicial al cargar
         _setInitialMarker();
       },
