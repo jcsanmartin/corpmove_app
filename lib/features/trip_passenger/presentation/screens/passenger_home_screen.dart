@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -13,6 +14,16 @@ import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 
 const String MAPBOX_TOKEN = "pk.eyJ1IjoiamNzYW5tYXJ0aW4iLCJhIjoiY21vYWJsZmUzMDR5eTJ4cTA5MmFvbmJpbSJ9.OZtHCg1w7y-HUow9Cl9Vsw";
+
+class MapTapListener implements mbx.OnMapTapListener {
+  final void Function(mbx.MapContentGestureContext) onTap;
+  MapTapListener(this.onTap);
+
+  @override
+  void onMapTap(mbx.MapContentGestureContext context) {
+    onTap(context);
+  }
+}
 
 class PassengerHomeScreen extends StatefulWidget {
   final bool isCorporateEnabled;
@@ -39,9 +50,15 @@ class _PassengerHomeScreenState extends State<PassengerHomeScreen> {
   int _dailyTripsLimit = 0;
   int _tripsRemaining = 0;
 
+  // Mapa y ubicaciones
   mbx.MapboxMap? _mapController;
-  Position? _currentPosition;
-  
+  mbx.CircleAnnotationManager? _circleAnnotationManager;
+  mbx.CircleAnnotation? _pickupAnnotation;
+
+  StreamSubscription<Position>? _positionStream;
+  bool _isManualLocation = false;
+  mbx.Position? _pickupLocation;
+  mbx.Position? _destinationLocation;
   String? _destinationName;
 
   @override
@@ -50,6 +67,12 @@ class _PassengerHomeScreenState extends State<PassengerHomeScreen> {
     _isCorporateMode = widget.isCorporateEnabled;
     _fetchUserData();
     _requestLocationPermission();
+  }
+
+  @override
+  void dispose() {
+    _positionStream?.cancel();
+    super.dispose();
   }
 
   Future<void> _fetchUserData() async {
@@ -85,7 +108,9 @@ class _PassengerHomeScreenState extends State<PassengerHomeScreen> {
 
             if (companyData != null) {
               _techoCobertura = (companyData['corporate_limit'] as num?)?.toDouble() ?? 0.0;
-              _dailyTripsLimit = (companyData['daily_trips_limit'] as num?)?.toInt() ?? 0;
+              // Usamos el límite de la tabla users o de la tabla companies
+              _dailyTripsLimit = (userData['daily_trips_limit'] as num?)?.toInt() ?? 
+                                 (companyData['daily_trips_limit'] as num?)?.toInt() ?? 0;
             }
 
             final now = DateTime.now();
@@ -129,19 +154,44 @@ class _PassengerHomeScreenState extends State<PassengerHomeScreen> {
 
     if (permission == LocationPermission.deniedForever) return;
 
+    _startLocationStream();
+
     if (_mapController != null) {
-      _centerMapOnUser();
+      _centerMapOnUser(forceResetManual: false);
     }
   }
 
-  Future<void> _centerMapOnUser() async {
+  Future<void> _startLocationStream() async {
+    _positionStream = Geolocator.getPositionStream(
+      locationSettings: const LocationSettings(accuracy: LocationAccuracy.high, distanceFilter: 10),
+    ).listen((Position position) {
+      if (!_isManualLocation) {
+        final pos = mbx.Position(position.longitude, position.latitude);
+        _pickupLocation = pos;
+        _updatePickupMarker(pos);
+      }
+    });
+  }
+
+  Future<void> _centerMapOnUser({bool forceResetManual = true}) async {
     try {
+      if (forceResetManual) {
+        setState(() {
+          _isManualLocation = false;
+        });
+      }
+
       Position position = await Geolocator.getCurrentPosition();
-      _currentPosition = position;
+      final pos = mbx.Position(position.longitude, position.latitude);
       
+      if (!_isManualLocation) {
+        _pickupLocation = pos;
+        _updatePickupMarker(pos);
+      }
+
       _mapController?.setCamera(mbx.CameraOptions(
-        center: mbx.Point(coordinates: mbx.Position(position.longitude, position.latitude)),
-        zoom: 15.0,
+        center: mbx.Point(coordinates: pos),
+        zoom: 15.5,
       ));
 
       _mapController?.location.updateSettings(mbx.LocationComponentSettings(
@@ -153,11 +203,62 @@ class _PassengerHomeScreenState extends State<PassengerHomeScreen> {
     }
   }
 
+  Future<void> _updatePickupMarker(mbx.Position pos) async {
+    if (_circleAnnotationManager == null) return;
+
+    if (_pickupAnnotation != null) {
+      _pickupAnnotation?.geometry = mbx.Point(coordinates: pos);
+      await _circleAnnotationManager?.update(_pickupAnnotation!);
+    } else {
+      _pickupAnnotation = await _circleAnnotationManager?.create(mbx.CircleAnnotationOptions(
+        geometry: mbx.Point(coordinates: pos),
+        circleRadius: 8.0,
+        circleColor: Colors.greenAccent.value,
+        circleStrokeColor: Colors.white.value,
+        circleStrokeWidth: 3.0,
+      ));
+    }
+  }
+
+  Future<void> _addDummyPickupPoints(mbx.Position center) async {
+    final features = [
+      {
+        "type": "Feature",
+        "geometry": {"type": "Point", "coordinates": [center.lng + 0.002, center.lat + 0.002]}
+      },
+      {
+        "type": "Feature",
+        "geometry": {"type": "Point", "coordinates": [center.lng - 0.002, center.lat + 0.001]}
+      },
+      {
+        "type": "Feature",
+        "geometry": {"type": "Point", "coordinates": [center.lng + 0.001, center.lat - 0.003]}
+      }
+    ];
+
+    final geojson = jsonEncode({
+      "type": "FeatureCollection",
+      "features": features
+    });
+
+    if (await _mapController?.style.styleSourceExists("pickup-source") == true) return;
+
+    await _mapController?.style.addSource(mbx.GeoJsonSource(id: "pickup-source", data: geojson));
+    await _mapController?.style.addLayer(mbx.CircleLayer(
+      id: "pickup-layer",
+      sourceId: "pickup-source",
+      circleColor: Colors.orangeAccent.value,
+      circleRadius: 6.0,
+      circleStrokeWidth: 2.0,
+      circleStrokeColor: Colors.white.value,
+    ));
+  }
+
   Future<void> _getRoute(mbx.Position destination) async {
-    if (_currentPosition == null) return;
+    if (_pickupLocation == null) return;
     
-    final originLon = _currentPosition!.longitude;
-    final originLat = _currentPosition!.latitude;
+    final originLon = _pickupLocation!.lng;
+    final originLat = _pickupLocation!.lat;
     final destLon = destination.lng;
     final destLat = destination.lat;
 
@@ -178,34 +279,28 @@ class _PassengerHomeScreenState extends State<PassengerHomeScreen> {
         };
         final geojsonString = jsonEncode(feature);
 
-        // Remover capas previas
+        // Remover capas previas de ruta
         if (await _mapController?.style.styleSourceExists("route-source") == true) {
           await _mapController?.style.removeStyleLayer("route-layer");
           await _mapController?.style.removeStyleSource("route-source");
         }
         
-        // Agregar origen de datos
-        await _mapController?.style.addSource(
-          mbx.GeoJsonSource(id: "route-source", data: geojsonString)
-        );
-        
-        // Agregar capa visible
-        await _mapController?.style.addLayer(
-          mbx.LineLayer(
-            id: "route-layer",
-            sourceId: "route-source",
-            lineColor: Colors.blue.value,
-            lineWidth: 5.0,
-            lineJoin: mbx.LineJoin.ROUND,
-            lineCap: mbx.LineCap.ROUND,
-          )
-        );
+        // Agregar origen de datos y capa de ruta
+        await _mapController?.style.addSource(mbx.GeoJsonSource(id: "route-source", data: geojsonString));
+        await _mapController?.style.addLayer(mbx.LineLayer(
+          id: "route-layer",
+          sourceId: "route-source",
+          lineColor: Colors.blue.value,
+          lineWidth: 5.0,
+          lineJoin: mbx.LineJoin.ROUND,
+          lineCap: mbx.LineCap.ROUND,
+        ));
 
-        // Calcular límites para enfocar toda la ruta
-        double minLat = originLat;
-        double maxLat = originLat;
-        double minLon = originLon;
-        double maxLon = originLon;
+        // Calcular límites para enfocar ambos puntos y la ruta
+        double minLat = originLat < destLat ? originLat : destLat;
+        double maxLat = originLat > destLat ? originLat : destLat;
+        double minLon = originLon < destLon ? originLon : destLon;
+        double maxLon = originLon > destLon ? originLon : destLon;
 
         final coords = geometry['coordinates'] as List;
         for (var coord in coords) {
@@ -225,14 +320,13 @@ class _PassengerHomeScreenState extends State<PassengerHomeScreen> {
         
         final cameraOptions = await _mapController?.cameraForCoordinateBounds(
           bounds, 
-          mbx.MbxEdgeInsets(top: 50, left: 50, bottom: 400, right: 50),
+          mbx.MbxEdgeInsets(top: 100, left: 50, bottom: 400, right: 50),
           null, null, null, null
         );
 
         if (cameraOptions != null) {
           _mapController?.setCamera(cameraOptions);
         }
-
       }
     } catch (e) {
       debugPrint('Error dibujando ruta: $e');
@@ -240,11 +334,11 @@ class _PassengerHomeScreenState extends State<PassengerHomeScreen> {
   }
 
   void _openSearchBottomSheet() async {
-    if (_currentPosition == null) {
+    if (_pickupLocation == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Obteniendo ubicación... intenta de nuevo.')),
+        const SnackBar(content: Text('Ubicación de origen no disponible. Espera un momento.')),
       );
-      await _centerMapOnUser();
+      await _centerMapOnUser(forceResetManual: false);
       return;
     }
 
@@ -254,7 +348,7 @@ class _PassengerHomeScreenState extends State<PassengerHomeScreen> {
       backgroundColor: Colors.transparent,
       builder: (context) {
         return SearchLocationSheet(
-          currentPosition: _currentPosition!,
+          currentPosition: _pickupLocation!,
         );
       },
     );
@@ -262,6 +356,7 @@ class _PassengerHomeScreenState extends State<PassengerHomeScreen> {
     if (result != null) {
       final destPosition = result['destination'] as mbx.Position;
       setState(() {
+        _destinationLocation = destPosition;
         _destinationName = result['placeName'];
       });
       await _getRoute(destPosition);
@@ -357,6 +452,22 @@ class _PassengerHomeScreenState extends State<PassengerHomeScreen> {
             ),
           ),
           ListTile(
+            leading: const Icon(Icons.account_circle_rounded, color: AppColors.textPrimary),
+            title: Text('Mi cuenta', style: GoogleFonts.inter(fontWeight: FontWeight.w500)),
+            onTap: () {
+              Navigator.pop(context);
+              setState(() => _selectedIndex = 2);
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.settings_rounded, color: AppColors.textPrimary),
+            title: Text('Configuración', style: GoogleFonts.inter(fontWeight: FontWeight.w500)),
+            onTap: () {
+              Navigator.pop(context);
+            },
+          ),
+          const Divider(color: AppColors.borderSubtle),
+          ListTile(
             leading: const Icon(Icons.logout_rounded, color: AppColors.error),
             title: Text('Cerrar sesión', style: GoogleFonts.inter(color: AppColors.error, fontWeight: FontWeight.w500)),
             onTap: () async {
@@ -377,9 +488,30 @@ class _PassengerHomeScreenState extends State<PassengerHomeScreen> {
       children: [
         Positioned.fill(
           child: CustomMapMapbox(
-            onMapCreated: (controller) {
+            onMapCreated: (controller) async {
               _mapController = controller;
-              _centerMapOnUser();
+              _circleAnnotationManager = await _mapController?.annotations.createCircleAnnotationManager();
+              
+              _mapController?.gestures.addOnMapTapListener(MapTapListener((context) async {
+                final pos = context.point.coordinates;
+                setState(() {
+                  _isManualLocation = true;
+                  _pickupLocation = pos;
+                });
+                await _updatePickupMarker(pos);
+                
+                // Si el usuario ya había buscado un destino, redibujamos la ruta desde el nuevo punto libre
+                if (_destinationLocation != null) {
+                  await _getRoute(_destinationLocation!);
+                }
+              }));
+
+              // Generar algunos puntos de recogida simulados al inicio si hay ubicación
+              if (_pickupLocation != null) {
+                await _addDummyPickupPoints(_pickupLocation!);
+              }
+
+              _centerMapOnUser(forceResetManual: false);
             },
           ),
         ),
@@ -464,14 +596,17 @@ class _PassengerHomeScreenState extends State<PassengerHomeScreen> {
                 padding: const EdgeInsets.only(right: 20, bottom: 16),
                 child: FloatingActionButton(
                   heroTag: 'location',
-                  backgroundColor: AppColors.surfaceLight,
-                  foregroundColor: AppColors.textPrimary,
+                  backgroundColor: _isManualLocation ? AppColors.accentLime : AppColors.surfaceLight,
+                  foregroundColor: _isManualLocation ? AppColors.textOnAccent : AppColors.textPrimary,
                   elevation: 4,
                   mini: true,
                   onPressed: () {
-                    _centerMapOnUser();
+                    _centerMapOnUser(forceResetManual: true);
+                    if (_destinationLocation != null) {
+                       _getRoute(_destinationLocation!); // Redibuja ruta desde el GPS real
+                    }
                   },
-                  child: const Icon(Icons.my_location_rounded),
+                  child: Icon(_isManualLocation ? Icons.gps_fixed : Icons.my_location_rounded),
                 ),
               ),
               
@@ -522,10 +657,11 @@ class _PassengerHomeScreenState extends State<PassengerHomeScreen> {
                                   onPressed: () {
                                     setState(() {
                                       _destinationName = null;
+                                      _destinationLocation = null;
                                     });
                                     _mapController?.style.removeStyleLayer("route-layer");
                                     _mapController?.style.removeStyleSource("route-source");
-                                    _centerMapOnUser();
+                                    _centerMapOnUser(forceResetManual: false);
                                   },
                                 )
                               ],
@@ -713,7 +849,7 @@ class _HistoryTab extends StatelessWidget {
 // ----------------------------------------------------
 
 class SearchLocationSheet extends StatefulWidget {
-  final Position currentPosition;
+  final mbx.Position currentPosition;
 
   const SearchLocationSheet({
     required this.currentPosition,
@@ -737,8 +873,8 @@ class _SearchLocationSheetState extends State<SearchLocationSheet> {
 
     setState(() => _isSearching = true);
 
-    final lon = widget.currentPosition.longitude;
-    final lat = widget.currentPosition.latitude;
+    final lon = widget.currentPosition.lng;
+    final lat = widget.currentPosition.lat;
     
     final url = Uri.parse(
         'https://api.mapbox.com/geocoding/v5/mapbox.places/${Uri.encodeComponent(query)}.json?proximity=$lon,$lat&access_token=$MAPBOX_TOKEN&language=es');
