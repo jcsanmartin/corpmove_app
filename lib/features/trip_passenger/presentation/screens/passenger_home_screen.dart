@@ -859,6 +859,21 @@ class _SearchLocationSheetState extends State<SearchLocationSheet> {
   final TextEditingController _searchController = TextEditingController();
   List<dynamic> _places = [];
   bool _isSearching = false;
+  Timer? _debounce;
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _onSearchChanged(String query) {
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+    _debounce = Timer(const Duration(milliseconds: 500), () {
+      _searchPlaces(query);
+    });
+  }
 
   Future<void> _searchPlaces(String query) async {
     if (query.trim().isEmpty) {
@@ -872,7 +887,13 @@ class _SearchLocationSheetState extends State<SearchLocationSheet> {
     final lat = widget.currentPosition.lat;
     
     final url = Uri.parse(
-        'https://api.mapbox.com/geocoding/v5/mapbox.places/${Uri.encodeComponent(query)}.json?proximity=$lon,$lat&access_token=$MAPBOX_TOKEN&language=es');
+        'https://api.mapbox.com/geocoding/v5/mapbox.places/${Uri.encodeComponent(query)}.json'
+        '?proximity=$lon,$lat'
+        '&types=poi,address,neighborhood,place'
+        '&country=co'
+        '&bbox=-73.30,10.40,-73.20,10.55'
+        '&access_token=$MAPBOX_TOKEN'
+        '&language=es');
 
     try {
       final response = await http.get(url);
@@ -919,7 +940,7 @@ class _SearchLocationSheetState extends State<SearchLocationSheet> {
               controller: _searchController,
               autofocus: true,
               style: GoogleFonts.inter(color: AppColors.textPrimary),
-              onChanged: _searchPlaces,
+              onChanged: _onSearchChanged,
               decoration: InputDecoration(
                 hintText: 'Buscar destino...',
                 hintStyle: GoogleFonts.inter(color: AppColors.textMuted),
