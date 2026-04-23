@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:corpmove_app/core/theme/app_theme.dart';
 import 'package:corpmove_app/features/owner/presentation/screens/partner_details_screen.dart';
+import 'package:corpmove_app/features/owner/presentation/screens/manage_company_screen.dart';
+import 'package:corpmove_app/features/owner/presentation/screens/manage_users_screen.dart';
+import 'package:corpmove_app/features/owner/presentation/screens/manage_drivers_screen.dart';
+import 'package:corpmove_app/features/owner/presentation/screens/role_assignment_screen.dart';
 
 class OwnerDashboardScreen extends StatelessWidget {
   const OwnerDashboardScreen({super.key});
@@ -80,7 +84,63 @@ class OwnerDashboardScreen extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 24),
+
+          // --- Tarjetas de Navegación ---
+          Text(
+            'Gestión Rápida',
+            style: GoogleFonts.inter(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 14),
+          GridView.count(
+            crossAxisCount: 2,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            mainAxisSpacing: 14,
+            crossAxisSpacing: 14,
+            childAspectRatio: 1.05,
+            children: [
+              _buildNavCard(
+                context,
+                icon: Icons.business_rounded,
+                label: 'Empresas',
+                subtitle: 'Convenios corporativos',
+                color: const Color(0xFF4ECDC4),
+                destination: const ManageCompanyScreen(),
+              ),
+              _buildNavCard(
+                context,
+                icon: Icons.directions_car_filled_rounded,
+                label: 'Conductores',
+                subtitle: 'Gestión de conductores',
+                color: const Color(0xFFFF6B6B),
+                destination: const ManageDriversScreen(),
+              ),
+              _buildNavCard(
+                context,
+                icon: Icons.people_rounded,
+                label: 'Usuarios',
+                subtitle: 'Normales y corporativos',
+                color: AppColors.info,
+                destination: const ManageUsersScreen(),
+              ),
+              _buildNavCard(
+                context,
+                icon: Icons.admin_panel_settings_rounded,
+                label: 'Roles',
+                subtitle: 'Asignación de roles',
+                color: AppColors.accentLime,
+                destination: const RoleAssignmentScreen(),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+
+          // --- Empresas Afiliadas ---
           Container(
             decoration: AppDecorations.cardElevated,
             child: Padding(
@@ -142,6 +202,71 @@ class OwnerDashboardScreen extends StatelessWidget {
     );
   }
 
+  // --- Tarjeta de Navegación ---
+  Widget _buildNavCard(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required String subtitle,
+    required Color color,
+    required Widget destination,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.cardElevated,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.borderSubtle, width: 0.5),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(20),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(20),
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => destination),
+            );
+          },
+          child: Padding(
+            padding: const EdgeInsets.all(18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(icon, color: color, size: 26),
+                ),
+                const Spacer(),
+                Text(
+                  label,
+                  style: GoogleFonts.inter(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  subtitle,
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    color: AppColors.textMuted,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   // --- Drawer del Dueño ---
   Widget _buildDrawer(BuildContext context) {
     return Drawer(
@@ -196,9 +321,17 @@ class OwnerDashboardScreen extends StatelessWidget {
             title: const Text('Empresas'),
             onTap: () {
               Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Gestión de empresas')),
-              );
+              Navigator.push(context,
+                  MaterialPageRoute(builder: (_) => const ManageCompanyScreen()));
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.directions_car),
+            title: const Text('Conductores'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(context,
+                  MaterialPageRoute(builder: (_) => const ManageDriversScreen()));
             },
           ),
           ListTile(
@@ -206,9 +339,17 @@ class OwnerDashboardScreen extends StatelessWidget {
             title: const Text('Usuarios'),
             onTap: () {
               Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Gestión de usuarios')),
-              );
+              Navigator.push(context,
+                  MaterialPageRoute(builder: (_) => const ManageUsersScreen()));
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.admin_panel_settings),
+            title: const Text('Roles'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(context,
+                  MaterialPageRoute(builder: (_) => const RoleAssignmentScreen()));
             },
           ),
           ListTile(
