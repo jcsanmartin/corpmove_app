@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:corpmove_app/core/services/supabase_service.dart';
 import 'package:corpmove_app/core/theme/app_theme.dart';
 import 'package:corpmove_app/features/splash/presentation/screens/splash_screen.dart';
+import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart' as mbx;
 import 'firebase_options.dart';
 
 void main() async {
@@ -23,6 +24,11 @@ void main() async {
   );
   // Supabase para base de datos y storage
   await SupabaseService.initialize();
+
+  // Inicializar Mapbox (Reemplaza con tu token público pk.eyJ...)
+  mbx.MapboxOptions.setAccessToken(
+      "pk.eyJ1IjoiamNzYW5tYXJ0aW4iLCJhIjoiY21vYWJsZmUzMDR5eTJ4cTA5MmFvbmJpbSJ9.OZtHCg1w7y-HUow9Cl9Vsw");
+
   runApp(const CorpMoveApp());
 }
 

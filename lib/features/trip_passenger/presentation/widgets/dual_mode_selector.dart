@@ -154,7 +154,7 @@ class _DualModeSelectorState extends State<DualModeSelector> {
                                   : inactiveTextColor,
                               fontSize: 14,
                             ),
-                            child: Row(
+                                    child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Icon(
@@ -165,12 +165,17 @@ class _DualModeSelectorState extends State<DualModeSelector> {
                                       : inactiveTextColor,
                                 ),
                                 const SizedBox(width: 4),
-                                const Text('Corporativo'),
+                                const Flexible(
+                                  child: Text(
+                                    'Corporativo',
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
                                 if (_dragPercent >= 0.5) ...[
-                                  const SizedBox(width: 6),
+                                  const SizedBox(width: 4),
                                   Container(
                                     padding: const EdgeInsets.symmetric(
-                                        horizontal: 5, vertical: 2),
+                                        horizontal: 4, vertical: 2),
                                     decoration: BoxDecoration(
                                       color: activeTextColor.withValues(
                                           alpha: 0.15),
