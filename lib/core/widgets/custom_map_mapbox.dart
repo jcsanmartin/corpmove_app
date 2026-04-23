@@ -6,6 +6,7 @@ class CustomMapMapbox extends StatefulWidget {
   final double initialLng;
   final double initialZoom;
   final Function(mbx.MapboxMap)? onMapCreated;
+  final mbx.OnMapTapListener? onTapListener;
   final String styleUri;
 
   const CustomMapMapbox({
@@ -14,6 +15,7 @@ class CustomMapMapbox extends StatefulWidget {
     this.initialLng = -74.0817,
     this.initialZoom = 14.0,
     this.onMapCreated,
+    this.onTapListener,
     this.styleUri = mbx.MapboxStyles.DARK,
   });
 
@@ -30,6 +32,7 @@ class CustomMapMapboxState extends State<CustomMapMapbox> {
     return mbx.MapWidget(
       key: const ValueKey("mapbox_map"),
       styleUri: widget.styleUri,
+      onTapListener: widget.onTapListener,
       onMapCreated: (mbx.MapboxMap mapboxMap) async {
         _mapboxMap = mapboxMap;
         

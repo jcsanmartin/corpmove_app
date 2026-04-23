@@ -15,15 +15,7 @@ import 'package:http/http.dart' as http;
 
 const String MAPBOX_TOKEN = "pk.eyJ1IjoiamNzYW5tYXJ0aW4iLCJhIjoiY21vYWJsZmUzMDR5eTJ4cTA5MmFvbmJpbSJ9.OZtHCg1w7y-HUow9Cl9Vsw";
 
-class MapTapListener implements mbx.OnMapTapListener {
-  final void Function(mbx.MapContentGestureContext) onTap;
-  MapTapListener(this.onTap);
 
-  @override
-  void onMapTap(mbx.MapContentGestureContext context) {
-    onTap(context);
-  }
-}
 
 class PassengerHomeScreen extends StatefulWidget {
   final bool isCorporateEnabled;
@@ -297,10 +289,15 @@ class _PassengerHomeScreenState extends State<PassengerHomeScreen> {
         ));
 
         // Calcular límites para enfocar ambos puntos y la ruta
-        double minLat = originLat < destLat ? originLat : destLat;
-        double maxLat = originLat > destLat ? originLat : destLat;
-        double minLon = originLon < destLon ? originLon : destLon;
-        double maxLon = originLon > destLon ? originLon : destLon;
+        double originLatD = originLat.toDouble();
+        double destLatD = destLat.toDouble();
+        double originLonD = originLon.toDouble();
+        double destLonD = destLon.toDouble();
+
+        double minLat = originLatD < destLatD ? originLatD : destLatD;
+        double maxLat = originLatD > destLatD ? originLatD : destLatD;
+        double minLon = originLonD < destLonD ? originLonD : destLonD;
+        double maxLon = originLonD > destLonD ? originLonD : destLonD;
 
         final coords = geometry['coordinates'] as List;
         for (var coord in coords) {
@@ -492,26 +489,24 @@ class _PassengerHomeScreenState extends State<PassengerHomeScreen> {
               _mapController = controller;
               _circleAnnotationManager = await _mapController?.annotations.createCircleAnnotationManager();
               
-              _mapController?.gestures.addOnMapTapListener(MapTapListener((context) async {
-                final pos = context.point.coordinates;
-                setState(() {
-                  _isManualLocation = true;
-                  _pickupLocation = pos;
-                });
-                await _updatePickupMarker(pos);
-                
-                // Si el usuario ya había buscado un destino, redibujamos la ruta desde el nuevo punto libre
-                if (_destinationLocation != null) {
-                  await _getRoute(_destinationLocation!);
-                }
-              }));
-
               // Generar algunos puntos de recogida simulados al inicio si hay ubicación
               if (_pickupLocation != null) {
                 await _addDummyPickupPoints(_pickupLocation!);
               }
 
               _centerMapOnUser(forceResetManual: false);
+            },
+            onTapListener: (context) async {
+              final pos = context.point.coordinates;
+              setState(() {
+                _isManualLocation = true;
+                _pickupLocation = pos;
+              });
+              await _updatePickupMarker(pos);
+              
+              if (_destinationLocation != null) {
+                await _getRoute(_destinationLocation!);
+              }
             },
           ),
         ),
