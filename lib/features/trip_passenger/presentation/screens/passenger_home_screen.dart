@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:corpmove_app/core/theme/app_theme.dart';
 import 'package:corpmove_app/features/trip_passenger/presentation/screens/negotiation_radar_screen.dart';
-import 'package:corpmove_app/features/trip_passenger/presentation/widgets/map_placeholder.dart';
+import 'package:corpmove_app/core/widgets/custom_map_mapbox.dart';
 import 'package:corpmove_app/features/trip_passenger/presentation/widgets/dual_mode_selector.dart';
 import 'package:corpmove_app/features/trip_passenger/presentation/widgets/profile_tab.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class PassengerHomeScreen extends StatefulWidget {
   final bool isCorporateEnabled;
@@ -61,6 +62,16 @@ class _PassengerHomeScreenState extends State<PassengerHomeScreen> {
   }
 
   Widget _buildDrawer(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+    final String defaultName = widget.isCorporateEnabled ? 'Empleado CorpMove' : 'Usuario';
+    
+    String displayName = user?.displayName ?? '';
+    if (displayName.trim().isEmpty) {
+      displayName = user?.email?.split('@').first ?? defaultName;
+    }
+    
+    final String displayEmail = user?.email ?? 'correo@ejemplo.com';
+
     return Drawer(
       backgroundColor: AppColors.surfaceLight,
       child: ListView(
@@ -89,7 +100,7 @@ class _PassengerHomeScreenState extends State<PassengerHomeScreen> {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  widget.isCorporateEnabled ? 'Empleado CorpMove' : 'Usuario',
+                  displayName,
                   style: GoogleFonts.inter(
                     color: AppColors.textPrimary,
                     fontSize: 18,
@@ -97,7 +108,7 @@ class _PassengerHomeScreenState extends State<PassengerHomeScreen> {
                   ),
                 ),
                 Text(
-                  'correo@ejemplo.com',
+                  displayEmail,
                   style: GoogleFonts.inter(
                     color: AppColors.textMuted,
                     fontSize: 13,
@@ -139,7 +150,7 @@ class _PassengerHomeScreenState extends State<PassengerHomeScreen> {
     return Stack(
       children: [
         // Mapa al fondo
-        const Positioned.fill(child: MapPlaceholder()),
+        const Positioned.fill(child: CustomMapMapbox()),
 
         // Top bar con menú y bienvenida flotante
         SafeArea(

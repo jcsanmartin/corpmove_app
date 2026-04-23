@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:corpmove_app/core/theme/app_theme.dart';
-import 'package:corpmove_app/features/trip_passenger/presentation/widgets/map_placeholder.dart';
+import 'package:corpmove_app/core/widgets/custom_map_mapbox.dart';
 
 class NegotiationRadarScreen extends StatefulWidget {
   final bool isCorporateMode;
@@ -41,7 +41,7 @@ class _NegotiationRadarScreenState extends State<NegotiationRadarScreen> {
       body: Stack(
         children: [
           // Mapa en el fondo ocupando la mitad superior/completa
-          const Positioned.fill(child: MapPlaceholder()),
+          const Positioned.fill(child: CustomMapMapbox()),
 
           // Botón de regreso flotante
           SafeArea(
