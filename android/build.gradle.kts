@@ -16,6 +16,19 @@ allprojects {
     repositories {
         google()
         mavenCentral()
+        // Mapbox SDK: repositorio privado con token de descarga
+        maven {
+            url = uri("https://api.mapbox.com/downloads/v2/releases/maven")
+            authentication {
+                create<BasicAuthentication>("basic")
+            }
+            credentials {
+                // El usuario siempre es "mapbox"
+                username = "mapbox"
+                // El token sk. va en gradle.properties como MAPBOX_DOWNLOADS_TOKEN
+                password = providers.gradleProperty("MAPBOX_DOWNLOADS_TOKEN").get()
+            }
+        }
     }
 }
 
