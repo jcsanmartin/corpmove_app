@@ -58,6 +58,34 @@ class _PassengerHomeScreenState extends State<PassengerHomeScreen> {
   mbx.Position? _destinationLocation;
   String? _destinationName;
 
+  // Estado local para las notificaciones simuladas
+  List<Map<String, dynamic>> _mockNotifications = [
+    {
+      'id': '1',
+      'title': 'Bienvenido a CorpMove',
+      'message': 'Tu cuenta ha sido configurada con éxito. Ya puedes solicitar viajes.',
+      'time': 'Hace 2 horas',
+      'icon': Icons.check_circle_rounded,
+      'color': AppColors.success,
+    },
+    {
+      'id': '2',
+      'title': 'Viaje Corporativo',
+      'message': 'Recuerda que para viajes corporativos debes seleccionar la opción en el selector.',
+      'time': 'Hace 1 día',
+      'icon': Icons.business_center_rounded,
+      'color': AppColors.accentLime,
+    },
+    {
+      'id': '3',
+      'title': 'Seguridad',
+      'message': 'Comparte tu viaje con personas de confianza desde la pantalla de viaje activo.',
+      'time': 'Hace 3 días',
+      'icon': Icons.security_rounded,
+      'color': AppColors.info,
+    },
+  ];
+
   @override
   void initState() {
     super.initState();
@@ -496,6 +524,196 @@ class _PassengerHomeScreenState extends State<PassengerHomeScreen> {
     );
   }
 
+  void _showNotifications(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setModalState) {
+            return Container(
+              height: MediaQuery.of(context).size.height * 0.6,
+              decoration: const BoxDecoration(
+                color: AppColors.surfaceLight,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: Column(
+                children: [
+                  const SizedBox(height: 12),
+                  Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: AppColors.borderSubtle,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Notificaciones',
+                          style: GoogleFonts.inter(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                        if (_mockNotifications.isNotEmpty)
+                          TextButton(
+                            onPressed: () {
+                              setModalState(() {
+                                _mockNotifications.clear();
+                              });
+                            },
+                            child: Text(
+                              'Marcar como leídas',
+                              style: GoogleFonts.inter(
+                                color: AppColors.accentLime,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  const Divider(color: AppColors.borderSubtle),
+                  Expanded(
+                    child: _mockNotifications.isEmpty
+                        ? Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(Icons.notifications_off_rounded, size: 64, color: AppColors.borderSubtle),
+                                const SizedBox(height: 16),
+                                Text(
+                                  'No tienes notificaciones nuevas',
+                                  style: GoogleFonts.inter(
+                                    color: AppColors.textMuted,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        : ListView.builder(
+                            padding: const EdgeInsets.all(16),
+                            itemCount: _mockNotifications.length,
+                            itemBuilder: (context, index) {
+                              final notif = _mockNotifications[index];
+                              return Dismissible(
+                                key: Key(notif['id']),
+                                direction: DismissDirection.endToStart,
+                                onDismissed: (direction) {
+                                  setModalState(() {
+                                    _mockNotifications.removeAt(index);
+                                  });
+                                },
+                                background: Container(
+                                  margin: const EdgeInsets.only(bottom: 12),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.error,
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  alignment: Alignment.centerRight,
+                                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                                  child: const Icon(Icons.delete_outline_rounded, color: Colors.white),
+                                ),
+                                child: Padding(
+                                  padding: const EdgeInsets.only(bottom: 12),
+                                  child: _buildNotificationTile(
+                                    title: notif['title'],
+                                    message: notif['message'],
+                                    time: notif['time'],
+                                    icon: notif['icon'],
+                                    color: notif['color'],
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                  ),
+                ],
+              ),
+            );
+          }
+        );
+      },
+    );
+  }
+
+  Widget _buildNotificationTile({
+    required String title,
+    required String message,
+    required String time,
+    required IconData icon,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceLight,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.borderSubtle),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: color, size: 24),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        title,
+                        style: GoogleFonts.inter(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 16,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      time,
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  message,
+                  style: GoogleFonts.inter(
+                    color: AppColors.textSecondary,
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildHomeTab() {
     return Stack(
       children: [
@@ -590,6 +808,25 @@ class _PassengerHomeScreenState extends State<PassengerHomeScreen> {
                               ),
                       ],
                     ),
+                  ),
+                ),
+                GestureDetector(
+                  onTap: () => _showNotifications(context),
+                  child: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceLight,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.3),
+                          blurRadius: 10,
+                          spreadRadius: 1,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(Icons.notifications_rounded, color: AppColors.textPrimary, size: 28),
                   ),
                 ),
               ],
