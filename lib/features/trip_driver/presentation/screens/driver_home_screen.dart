@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:corpmove_app/core/theme/app_theme.dart';
+import 'package:corpmove_app/features/trip_driver/presentation/screens/driver_profile_screen.dart';
+import 'package:corpmove_app/features/trip_driver/presentation/screens/driver_settings_screen.dart';
 
 class DriverHomeScreen extends StatefulWidget {
   const DriverHomeScreen({super.key});
@@ -15,7 +17,6 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
   late final List<Widget> _screens = [
     _buildTripsTab(),
     _buildEarningsTab(),
-    const _DriverProfileTab(),
   ];
 
   @override
@@ -60,7 +61,17 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
       body: _screens[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
-        onTap: (index) => setState(() => _selectedIndex = index),
+        onTap: (index) {
+          if (index == 2) {
+            // Perfil → pantalla completa
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const DriverProfileScreen()),
+            );
+          } else {
+            setState(() => _selectedIndex = index);
+          }
+        },
         selectedItemColor: AppColors.accentLime,
         unselectedItemColor: AppColors.textMuted,
         backgroundColor: AppColors.surfaceLight,
@@ -104,18 +115,27 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
             ),
           ),
           ListTile(
-            leading: const Icon(Icons.account_circle),
-            title: const Text('Mi perfil'),
+            leading: const Icon(Icons.account_circle, color: AppColors.textPrimary),
+            title: Text('Mi perfil', style: GoogleFonts.inter(fontWeight: FontWeight.w500, color: AppColors.textPrimary)),
             onTap: () {
               Navigator.pop(context);
-              setState(() => _selectedIndex = 2);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const DriverProfileScreen(),
+                ),
+              );
             },
           ),
           ListTile(
-            leading: const Icon(Icons.settings),
-            title: const Text('Configuración'),
+            leading: const Icon(Icons.settings, color: AppColors.textPrimary),
+            title: Text('Configuración', style: GoogleFonts.inter(fontWeight: FontWeight.w500, color: AppColors.textPrimary)),
             onTap: () {
               Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const DriverSettingsScreen()),
+              );
             },
           ),
           const Divider(),
