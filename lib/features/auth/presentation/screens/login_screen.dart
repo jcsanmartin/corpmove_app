@@ -33,10 +33,12 @@ class LoginScreen extends StatelessWidget {
                       width: 1,
                     ),
                   ),
-                  child: const Icon(
-                    Icons.directions_car_rounded,
-                    size: 42,
-                    color: AppColors.accentLime,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(24),
+                    child: Image.asset(
+                      'assets/images/Icono_ini.jpeg',
+                      fit: BoxFit.cover,
+                    ),
                   ),
                 ),
               ),

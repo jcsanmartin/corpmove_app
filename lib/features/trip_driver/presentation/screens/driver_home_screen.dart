@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:corpmove_app/core/theme/app_theme.dart';
 import 'package:corpmove_app/features/trip_driver/presentation/screens/driver_profile_screen.dart';
 import 'package:corpmove_app/features/trip_driver/presentation/screens/driver_settings_screen.dart';
+import 'package:corpmove_app/features/trip_driver/presentation/screens/active_trip_screen.dart';
 
 class DriverHomeScreen extends StatefulWidget {
   const DriverHomeScreen({super.key});
@@ -160,10 +161,29 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
         const SizedBox(height: 10),
         _buildTripCard(
           isCorporate: true,
-          pickup: 'Calle 100 #19-21',
-          dropoff: 'Calle 72 #9-55',
-          distance: '5.2 km',
-          estimatedFare: 22000,
+          pickup: 'UPC Sabanas (Mock)',
+          dropoff: 'Plaza Alfonso López (Mock)',
+          distance: 'Simulado',
+          estimatedFare: 15000,
+          onAccept: () {
+            // MAPA CON COORDENADAS REALES DE VALLEDUPAR
+            final mockTrip = {
+              'id': 'mock-trip-123',
+              'pickup_lat': 10.4503,
+              'pickup_lng': -73.2541,
+              'dropoff_lat': 10.4762,
+              'dropoff_lng': -73.2483,
+              'status': 'pending',
+              'client_name': 'Usuario de Prueba',
+            };
+            
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => ActiveTripScreen(tripData: mockTrip),
+              ),
+            );
+          },
         ),
         const SizedBox(height: 12),
         _buildTripCard(
@@ -246,6 +266,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
     required String dropoff,
     required String distance,
     required double estimatedFare,
+    VoidCallback? onAccept,
   }) {
     return Container(
       decoration: AppDecorations.cardElevated,
@@ -319,7 +340,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: ElevatedButton(
-                    onPressed: () {},
+                    onPressed: onAccept,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: isCorporate ? AppColors.accentLime : AppColors.info,
                       foregroundColor: AppColors.textOnAccent,
