@@ -199,17 +199,21 @@ class _PassengerHomeScreenState extends State<PassengerHomeScreen> {
   Future<void> _updatePickupMarker(mbx.Position pos) async {
     if (_circleAnnotationManager == null) return;
 
-    if (_pickupAnnotation != null) {
-      _pickupAnnotation?.geometry = mbx.Point(coordinates: pos);
-      await _circleAnnotationManager?.update(_pickupAnnotation!);
-    } else {
-      _pickupAnnotation = await _circleAnnotationManager?.create(mbx.CircleAnnotationOptions(
-        geometry: mbx.Point(coordinates: pos),
-        circleRadius: 8.0,
-        circleColor: Colors.greenAccent.value,
-        circleStrokeColor: Colors.white.value,
-        circleStrokeWidth: 3.0,
-      ));
+    try {
+      if (_pickupAnnotation != null) {
+        _pickupAnnotation?.geometry = mbx.Point(coordinates: pos);
+        await _circleAnnotationManager?.update(_pickupAnnotation!);
+      } else {
+        _pickupAnnotation = await _circleAnnotationManager?.create(mbx.CircleAnnotationOptions(
+          geometry: mbx.Point(coordinates: pos),
+          circleRadius: 8.0,
+          circleColor: Colors.greenAccent.value,
+          circleStrokeColor: Colors.white.value,
+          circleStrokeWidth: 3.0,
+        ));
+      }
+    } catch (e) {
+      debugPrint('Error updating pickup marker: $e');
     }
   }
 
