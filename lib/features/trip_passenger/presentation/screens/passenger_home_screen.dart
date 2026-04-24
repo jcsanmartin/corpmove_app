@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:corpmove_app/core/theme/app_theme.dart';
 import 'package:corpmove_app/features/trip_passenger/presentation/screens/negotiation_radar_screen.dart';
+import 'package:corpmove_app/features/trip_passenger/presentation/screens/passenger_settings_screen.dart';
 import 'package:corpmove_app/core/widgets/custom_map_mapbox.dart';
 import 'package:corpmove_app/features/trip_passenger/presentation/widgets/dual_mode_selector.dart';
 import 'package:corpmove_app/features/trip_passenger/presentation/widgets/profile_tab.dart';
@@ -461,6 +462,12 @@ class _PassengerHomeScreenState extends State<PassengerHomeScreen> {
             title: Text('Configuración', style: GoogleFonts.inter(fontWeight: FontWeight.w500)),
             onTap: () {
               Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const PassengerSettingsScreen(),
+                ),
+              );
             },
           ),
           const Divider(color: AppColors.borderSubtle),
