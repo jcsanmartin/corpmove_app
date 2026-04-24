@@ -89,9 +89,10 @@ class _PassengerHomeScreenState extends State<PassengerHomeScreen> {
         _displayName = userData['display_name'] ?? 'Usuario';
         _userRole = userData['role'] ?? 'normal';
 
-        if (_userRole == 'corporativo') {
+        if (_userRole == 'corporativo' || _userRole == 'employee') {
           _isCorporateMode = true; 
           final companyId = userData['company_id'];
+          final supabaseUserId = userData['id']; // El UUID de Supabase
 
           if (companyId != null) {
             final companyData = await supabase
@@ -113,7 +114,7 @@ class _PassengerHomeScreenState extends State<PassengerHomeScreen> {
             final tripsData = await supabase
                 .from('trips')
                 .select('id')
-                .eq('user_id', user.uid)
+                .eq('user_id', supabaseUserId) 
                 .gte('created_at', startOfDay);
 
             final tripsToday = tripsData.length;
@@ -676,7 +677,7 @@ class _PassengerHomeScreenState extends State<PassengerHomeScreen> {
                             const Divider(color: AppColors.borderSubtle),
                           ],
 
-                          if (_userRole == 'corporativo')
+                          if (_userRole == 'corporativo' || _userRole == 'employee')
                             DualModeSelector(
                               isCorporateMode: _isCorporateMode,
                               onModeChanged: (value) => setState(() => _isCorporateMode = value),
