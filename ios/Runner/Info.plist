@@ -68,6 +68,8 @@
 	</array>
 	<key>MBXAccessToken</key>
 	<string>pk.eyJ1IjoiamNzYW5tYXJ0aW4iLCJhIjoiY21vYWJsZmUzMDR5eTJ4cTA5MmFvbmJpbSJ9.OZtHCg1w7y-HUow9Cl9Vsw</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Necesitamos acceso a la cámara para escanear el código QR del vehículo y realizar el check-in.</string>
 </dict>
 </plist>
 
