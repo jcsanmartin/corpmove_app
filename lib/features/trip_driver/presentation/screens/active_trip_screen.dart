@@ -22,6 +22,9 @@ class ActiveTripScreen extends StatefulWidget {
 
 class _ActiveTripScreenState extends State<ActiveTripScreen> {
   mbx.MapboxMap? _mapController;
+  mbx.CircleAnnotationManager? _circleAnnotationManager;
+  mbx.CircleAnnotation? _destinationAnnotation;
+  mbx.CircleAnnotation? _originAnnotation;
 
   StreamSubscription<Position>? _positionStream;
   mbx.Position? _currentPosition;
@@ -79,13 +82,13 @@ class _ActiveTripScreenState extends State<ActiveTripScreen> {
   }
 
   Future<void> _updateDriverMarker(mbx.Position pos) async {
-    _mapController?.setCamera(mbx.CameraOptions(
-      center: mbx.Point(coordinates: pos),
-    ));
+    // Ya no centramos la cámara en el conductor constantemente
+    // para permitir que el conductor vea la ruta completa y el destino.
   }
 
   Future<void> _onMapCreated(mbx.MapboxMap controller) async {
     _mapController = controller;
+    _circleAnnotationManager = await _mapController?.annotations.createCircleAnnotationManager();
     
     _mapController?.location.updateSettings(mbx.LocationComponentSettings(
       enabled: true,
@@ -126,6 +129,7 @@ class _ActiveTripScreenState extends State<ActiveTripScreen> {
         };
         final geojsonString = jsonEncode(feature);
 
+        // Dibujar ruta
         if (await _mapController?.style.styleSourceExists("route-source") == true) {
           await _mapController?.style.removeStyleLayer("route-layer");
           await _mapController?.style.removeStyleSource("route-source");
@@ -140,7 +144,44 @@ class _ActiveTripScreenState extends State<ActiveTripScreen> {
           lineJoin: mbx.LineJoin.ROUND,
           lineCap: mbx.LineCap.ROUND,
         ));
+
+        // Dibujar pines de origen y destino usando capas (layers)
+        if (await _mapController?.style.styleSourceExists("pins-source") == true) {
+          await _mapController?.style.removeStyleLayer("pins-layer");
+          await _mapController?.style.removeStyleSource("pins-source");
+        }
+
+        final pinsGeoJson = jsonEncode({
+          "type": "FeatureCollection",
+          "features": [
+            {
+              "type": "Feature",
+              "geometry": {"type": "Point", "coordinates": [originLon, originLat]},
+              "properties": {"isOrigin": true}
+            },
+            {
+              "type": "Feature",
+              "geometry": {"type": "Point", "coordinates": [destLon, destLat]},
+              "properties": {"isOrigin": false}
+            }
+          ]
+        });
+
+        await _mapController?.style.addSource(mbx.GeoJsonSource(id: "pins-source", data: pinsGeoJson));
         
+        // Capa para los pines (usaremos un CircleLayer que cambia de color según la propiedad isOrigin)
+        // Ya que Mapbox Flutter a veces requiere expresiones complejas para colores dinámicos,
+        // lo haremos más sencillo agregando dos capas diferentes o colores fijos.
+        // Para simplificar, crearemos una capa genérica de puntos grandes oscuros con borde blanco.
+        await _mapController?.style.addLayer(mbx.CircleLayer(
+          id: "pins-layer",
+          sourceId: "pins-source",
+          circleRadius: 8.0,
+          circleColor: Colors.black87.value,
+          circleStrokeColor: Colors.white.value,
+          circleStrokeWidth: 3.0,
+        ));
+
         // Ajustar la cámara para ver la ruta completa
         double minLat = (originLat < destLat ? originLat : destLat).toDouble();
         double maxLat = (originLat > destLat ? originLat : destLat).toDouble();

@@ -843,7 +843,11 @@ class _CompanyAdminScreenState extends State<CompanyAdminScreen> {
                 Navigator.pop(dialogContext);
                 dynamic newValue;
                 if (isNumber) {
-                  newValue = double.tryParse(editController.text) ?? 0.0;
+                  if (fieldKey == 'daily_trips_limit') {
+                    newValue = int.tryParse(editController.text) ?? (double.tryParse(editController.text)?.toInt() ?? 0);
+                  } else {
+                    newValue = double.tryParse(editController.text) ?? 0.0;
+                  }
                 } else {
                   if (fieldKey == 'allowed_schedules') {
                     newValue = [editController.text];

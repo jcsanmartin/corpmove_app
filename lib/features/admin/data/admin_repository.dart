@@ -65,13 +65,8 @@ class AdminRepository {
           .update({field: value})
           .eq('id', companyId);
 
-      // Si actualizamos corporate_limit, propagamos a todos los empleados
-      if (field == 'corporate_limit') {
-        await _db
-            .from('users')
-            .update({'corporate_limit': value})
-            .eq('company_id', companyId);
-      }
+      // El límite se lee directamente de la tabla companies en el cliente,
+      // no es necesario (ni posible) propagarlo a la tabla users porque no tiene esa columna.
     } catch (e) {
       debugPrint('[Supabase] Error al actualizar $field: $e');
       throw Exception('Error al actualizar $field: $e');

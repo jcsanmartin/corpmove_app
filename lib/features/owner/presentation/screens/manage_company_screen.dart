@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:corpmove_app/core/theme/app_theme.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ManageCompanyScreen extends StatefulWidget {
   const ManageCompanyScreen({super.key});
@@ -181,6 +182,10 @@ class _ManageCompanyScreenState extends State<ManageCompanyScreen> {
     final contactC = TextEditingController(text: existing?['contact'] ?? '');
     final commC = TextEditingController(text: existing?['commission']?.toString() ?? '10.0');
     final empC = TextEditingController(text: existing?['employees']?.toString() ?? '0');
+    // Nuevos campos para límites
+    final techoC = TextEditingController(text: existing?['corporate_limit']?.toString() ?? '0');
+    final dailyC = TextEditingController(text: existing?['daily_trips_limit']?.toString() ?? '0');
+
     showDialog(context: context, builder: (ctx) => AlertDialog(
       backgroundColor: AppColors.surfaceLight,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -193,16 +198,56 @@ class _ManageCompanyScreenState extends State<ManageCompanyScreen> {
         TextField(controller: commC, style: const TextStyle(color: AppColors.textPrimary), keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Comisión (%)', prefixIcon: Icon(Icons.percent))),
         const SizedBox(height: 14),
         TextField(controller: empC, style: const TextStyle(color: AppColors.textPrimary), keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Nº Empleados', prefixIcon: Icon(Icons.people_outline))),
+        const SizedBox(height: 14),
+        TextField(controller: techoC, style: const TextStyle(color: AppColors.textPrimary), keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Techo por Viaje (\$)', prefixIcon: Icon(Icons.attach_money))),
+        const SizedBox(height: 14),
+        TextField(controller: dailyC, style: const TextStyle(color: AppColors.textPrimary), keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Viajes Diarios Máximos', prefixIcon: Icon(Icons.directions_car))),
       ])),
       actions: [
         TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
-        ElevatedButton(onPressed: () {
-          setState(() {
-            final data = {'name': nameC.text.isEmpty ? 'Sin nombre' : nameC.text, 'contact': contactC.text.isEmpty ? 'sin@email.com' : contactC.text, 'active': existing?['active'] ?? true, 'commission': double.tryParse(commC.text) ?? 10.0, 'employees': int.tryParse(empC.text) ?? 0, 'tripsMonth': existing?['tripsMonth'] ?? 0};
-            if (index != null) { _companies[index] = data; } else { _companies.add(data); }
-          });
-          Navigator.pop(ctx);
-        }, child: Text(index != null ? 'Guardar' : 'Crear')),
+        ElevatedButton(
+          onPressed: () async {
+            final data = {
+              'id': existing?['id'], // Asumimos que id vendrá de DB pronto
+              'name': nameC.text.isEmpty ? 'Sin nombre' : nameC.text, 
+              'contact': contactC.text.isEmpty ? 'sin@email.com' : contactC.text, 
+              'active': existing?['active'] ?? true, 
+              'commission': double.tryParse(commC.text) ?? 10.0, 
+              'employees': int.tryParse(empC.text) ?? 0, 
+              'tripsMonth': existing?['tripsMonth'] ?? 0,
+              'corporate_limit': double.tryParse(techoC.text) ?? 0.0,
+              'daily_trips_limit': int.tryParse(dailyC.text) ?? 0,
+            };
+
+            // UPDATE real a Supabase (si tiene ID)
+            if (data['id'] != null) {
+              try {
+                await Supabase.instance.client
+                    .from('companies')
+                    .update({
+                      'corporate_limit': data['corporate_limit'],
+                      'daily_trips_limit': data['daily_trips_limit']
+                    })
+                    .eq('id', data['id']);
+                
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Límites actualizados en Supabase exitosamente')),
+                );
+              } catch (e) {
+                debugPrint('Error updating Supabase: $e');
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Error actualizando Supabase: $e')),
+                );
+              }
+            }
+
+            setState(() {
+              if (index != null) { _companies[index] = data; } else { _companies.add(data); }
+            });
+            Navigator.pop(ctx);
+          }, 
+          child: Text(index != null ? 'Guardar' : 'Crear')
+        ),
       ],
     ));
   }
