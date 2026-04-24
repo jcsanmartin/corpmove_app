@@ -42,7 +42,7 @@ class CustomMapMapboxState extends State<CustomMapMapbox> {
         // Configurar tema oscuro si es el estilo Standard para mantener POIs visibles en mapa oscuro
         if (widget.styleUri == mbx.MapboxStyles.STANDARD) {
           try {
-            await mapboxMap.style.setStyleImportConfigProperty("basemap", "theme", mbx.Value("dark"));
+            await mapboxMap.style.setStyleImportConfigProperty("basemap", "theme", "dark");
           } catch (e) {
             debugPrint("Error configurando tema oscuro en Mapbox Standard: $e");
           }
