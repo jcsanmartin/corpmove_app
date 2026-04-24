@@ -14,6 +14,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart' as mbx;
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
+import 'package:google_sign_in/google_sign_in.dart';
 
 const String MAPBOX_TOKEN = "pk.eyJ1IjoiamNzYW5tYXJ0aW4iLCJhIjoiY21vYWJsZmUzMDR5eTJ4cTA5MmFvbmJpbSJ9.OZtHCg1w7y-HUow9Cl9Vsw";
 
@@ -482,6 +483,12 @@ class _PassengerHomeScreenState extends State<PassengerHomeScreen> {
             title: Text('Cerrar sesión', style: GoogleFonts.inter(color: AppColors.error, fontWeight: FontWeight.w500)),
             onTap: () async {
               Navigator.pop(context);
+              // Desconectar Google para forzar selector de cuentas
+              try {
+                await GoogleSignIn().signOut();
+              } catch (e) {
+                debugPrint('Error en Google SignOut: $e');
+              }
               await FirebaseAuth.instance.signOut();
               if (mounted) {
                 Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
