@@ -8,6 +8,7 @@ import 'package:corpmove_app/features/trip_passenger/presentation/screens/passen
 import 'package:corpmove_app/core/widgets/custom_map_mapbox.dart';
 import 'package:corpmove_app/features/trip_passenger/presentation/widgets/dual_mode_selector.dart';
 import 'package:corpmove_app/features/trip_passenger/presentation/widgets/profile_tab.dart';
+import 'package:corpmove_app/features/trip_passenger/presentation/screens/qr_scanner_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart' as mbx;
@@ -701,6 +702,27 @@ class _PassengerHomeScreenState extends State<PassengerHomeScreen> {
                             ),
 
                           const SizedBox(height: 24),
+
+                          // Botón de Check-in QR (Hackathon Reto 1)
+                          OutlinedButton.icon(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (_) => const QRScannerScreen()),
+                              );
+                            },
+                            icon: const Icon(Icons.qr_code_scanner_rounded, color: AppColors.accentLime),
+                            label: const Text("Hacer Check-in con QR"),
+                            style: OutlinedButton.styleFrom(
+                              minimumSize: const Size(double.infinity, 50),
+                              side: const BorderSide(color: AppColors.borderSubtle),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                            ),
+                          ),
+
+                          const SizedBox(height: 12),
 
                           SizedBox(
                             width: double.infinity,
