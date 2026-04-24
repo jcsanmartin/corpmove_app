@@ -16,7 +16,7 @@ class CustomMapMapbox extends StatefulWidget {
     this.initialZoom = 14.0,
     this.onMapCreated,
     this.onTapListener,
-    this.styleUri = mbx.MapboxStyles.STANDARD,
+    this.styleUri = "mapbox://styles/jcsanmartin/cmod0i3ds009w01sc02iuf9y3",
   });
 
   @override
@@ -39,14 +39,6 @@ class CustomMapMapboxState extends State<CustomMapMapbox> {
         // Inicializar el gestor de anotaciones (marcadores)
         _pointAnnotationManager = await mapboxMap.annotations.createPointAnnotationManager();
         
-        // Configurar tema oscuro si es el estilo Standard para mantener POIs visibles en mapa oscuro
-        if (widget.styleUri == mbx.MapboxStyles.STANDARD) {
-          try {
-            await mapboxMap.style.setStyleImportConfigProperty("basemap", "theme", "dark");
-          } catch (e) {
-            debugPrint("Error configurando tema oscuro en Mapbox Standard: $e");
-          }
-        }
         
         if (widget.onMapCreated != null) {
           widget.onMapCreated!(mapboxMap);
