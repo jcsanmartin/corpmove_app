@@ -95,6 +95,11 @@ class AuthService {
   }
 
   Future<void> signOut() async {
+    try {
+      await _googleSignIn.disconnect();
+    } catch (e) {
+      debugPrint('Error al desconectar Google: $e');
+    }
     await _googleSignIn.signOut();
     await _auth.signOut();
   }

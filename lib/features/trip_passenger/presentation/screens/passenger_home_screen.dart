@@ -9,6 +9,7 @@ import 'package:corpmove_app/core/widgets/custom_map_mapbox.dart';
 import 'package:corpmove_app/features/trip_passenger/presentation/widgets/dual_mode_selector.dart';
 import 'package:corpmove_app/features/trip_passenger/presentation/widgets/profile_tab.dart';
 import 'package:corpmove_app/features/trip_passenger/presentation/screens/qr_scanner_screen.dart';
+import 'package:corpmove_app/core/services/auth_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart' as mbx;
@@ -36,6 +37,7 @@ class _PassengerHomeScreenState extends State<PassengerHomeScreen> {
   late bool _isCorporateMode;
   int _selectedIndex = 0;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  final AuthService _authService = AuthService();
 
   // Variables dinámicas
   bool _isLoading = true;
@@ -483,13 +485,7 @@ class _PassengerHomeScreenState extends State<PassengerHomeScreen> {
             title: Text('Cerrar sesión', style: GoogleFonts.inter(color: AppColors.error, fontWeight: FontWeight.w500)),
             onTap: () async {
               Navigator.pop(context);
-              // Desconectar Google para forzar selector de cuentas
-              try {
-                await GoogleSignIn().signOut();
-              } catch (e) {
-                debugPrint('Error en Google SignOut: $e');
-              }
-              await FirebaseAuth.instance.signOut();
+              await _authService.signOut();
               if (mounted) {
                 Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
               }
