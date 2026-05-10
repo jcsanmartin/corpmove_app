@@ -16,6 +16,8 @@ import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart' as mbx;
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:corpmove_app/features/trip_passenger/presentation/screens/waiting_driver_screen.dart';
+import 'package:corpmove_app/features/data/repositories/trip_supabase_repository.dart';
 
 const String MAPBOX_TOKEN = "pk.eyJ1IjoiamNzYW5tYXJ0aW4iLCJhIjoiY21vYWJsZmUzMDR5eTJ4cTA5MmFvbmJpbSJ9.OZtHCg1w7y-HUow9Cl9Vsw";
 
@@ -43,6 +45,7 @@ class _PassengerHomeScreenState extends State<PassengerHomeScreen> {
   bool _isLoading = true;
   String _displayName = 'Usuario';
   String _userRole = 'normal';
+  String? _companyId;
   double _techoCobertura = 0.0;
   int _dailyTripsLimit = 0;
   int _tripsRemaining = 0;
@@ -57,6 +60,13 @@ class _PassengerHomeScreenState extends State<PassengerHomeScreen> {
   mbx.Position? _pickupLocation;
   mbx.Position? _destinationLocation;
   String? _destinationName;
+
+  // Precio propuesto y conductores cercanos
+  final TextEditingController _fareController = TextEditingController();
+  final TripSupabaseRepository _tripRepo = TripSupabaseRepository();
+  List<Map<String, dynamic>> _nearbyDrivers = [];
+  Timer? _driverRefreshTimer;
+  bool _isCreatingTrip = false;
 
   // Estado local para las notificaciones simuladas
   List<Map<String, dynamic>> _mockNotifications = [
@@ -92,11 +102,14 @@ class _PassengerHomeScreenState extends State<PassengerHomeScreen> {
     _isCorporateMode = widget.isCorporateEnabled;
     _fetchUserData();
     _requestLocationPermission();
+    _startDriverRefreshTimer();
   }
 
   @override
   void dispose() {
     _positionStream?.cancel();
+    _driverRefreshTimer?.cancel();
+    _fareController.dispose();
     super.dispose();
   }
 
@@ -122,14 +135,14 @@ class _PassengerHomeScreenState extends State<PassengerHomeScreen> {
 
         if (_userRole == 'corporativo' || _userRole == 'employee') {
           _isCorporateMode = true; 
-          final companyId = userData['company_id'];
+          _companyId = userData['company_id'];
           final supabaseUserId = userData['id']; // El UUID de Supabase
 
-          if (companyId != null) {
+          if (_companyId != null) {
             final companyData = await supabase
                 .from('companies')
                 .select()
-                .eq('id', companyId)
+                .eq('id', _companyId!)
                 .maybeSingle();
 
             if (companyData != null) {
@@ -395,6 +408,158 @@ class _PassengerHomeScreenState extends State<PassengerHomeScreen> {
         _destinationName = result['placeName'];
       });
       await _getRoute(destPosition);
+    }
+  }
+
+  // ──── Conductores cercanos ────
+
+  void _startDriverRefreshTimer() {
+    _fetchAndDrawNearbyDrivers();
+    _driverRefreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      _fetchAndDrawNearbyDrivers();
+    });
+  }
+
+  Future<void> _fetchAndDrawNearbyDrivers() async {
+    try {
+      final drivers = await _tripRepo.fetchActiveDrivers();
+      if (mounted) {
+        setState(() => _nearbyDrivers = drivers);
+        _drawDriverMarkers();
+      }
+    } catch (e) {
+      debugPrint('Error fetching nearby drivers: $e');
+    }
+  }
+
+  Future<void> _drawDriverMarkers() async {
+    if (_mapController == null) return;
+    try {
+      if (await _mapController?.style.styleSourceExists("drivers-source") == true) {
+        await _mapController?.style.removeStyleLayer("drivers-layer");
+        await _mapController?.style.removeStyleSource("drivers-source");
+      }
+      if (_nearbyDrivers.isEmpty) return;
+
+      final features = _nearbyDrivers.map((driver) => {
+        "type": "Feature",
+        "geometry": {
+          "type": "Point",
+          "coordinates": [driver['longitude'], driver['latitude']]
+        },
+        "properties": {"name": driver['driver_name'] ?? 'Conductor'}
+      }).toList();
+
+      final geojson = jsonEncode({"type": "FeatureCollection", "features": features});
+
+      await _mapController?.style.addSource(mbx.GeoJsonSource(id: "drivers-source", data: geojson));
+      await _mapController?.style.addLayer(mbx.CircleLayer(
+        id: "drivers-layer",
+        sourceId: "drivers-source",
+        circleRadius: 9.0,
+        circleColor: Colors.deepPurpleAccent.value,
+        circleStrokeColor: Colors.white.value,
+        circleStrokeWidth: 2.5,
+      ));
+    } catch (e) {
+      debugPrint('Error drawing driver markers: $e');
+    }
+  }
+
+  // ──── Crear viaje en Supabase ────
+
+  Future<void> _createTripAndNavigate() async {
+    final fareText = _fareController.text.trim();
+    if (fareText.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Ingresa un precio para el viaje')),
+      );
+      return;
+    }
+    final fare = double.tryParse(fareText);
+    if (fare == null || fare <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Ingresa un precio válido')),
+      );
+      return;
+    }
+    if (_pickupLocation == null || _destinationLocation == null) return;
+
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    if (_isCorporateMode && _companyId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No tienes una empresa asignada para viajes corporativos.')),
+      );
+      return;
+    }
+
+    setState(() => _isCreatingTrip = true);
+
+    try {
+      // Obtener el UUID de Supabase a partir del Firebase UID
+      final supabaseUserId = await _tripRepo.getSupabaseUserId(user.uid);
+      if (supabaseUserId == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Error: usuario no encontrado en Supabase')),
+          );
+        }
+        return;
+      }
+
+      final tripId = await _tripRepo.createTrip(
+        userId: supabaseUserId,
+        originLat: _pickupLocation!.lat.toDouble(),
+        originLng: _pickupLocation!.lng.toDouble(),
+        originText: 'Ubicación actual',
+        destLat: _destinationLocation!.lat.toDouble(),
+        destLng: _destinationLocation!.lng.toDouble(),
+        destinationText: _destinationName!,
+        cost: fare,
+        companyId: _isCorporateMode ? _companyId : null,
+      );
+
+      if (mounted) {
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => WaitingDriverScreen(
+              tripId: tripId,
+              destinationName: _destinationName!,
+              pickupLat: _pickupLocation!.lat.toDouble(),
+              pickupLng: _pickupLocation!.lng.toDouble(),
+              destinationLat: _destinationLocation!.lat.toDouble(),
+              destinationLng: _destinationLocation!.lng.toDouble(),
+              proposedFare: fare,
+            ),
+          ),
+        );
+        // Reset al volver
+        if (mounted) {
+          setState(() {
+            _destinationName = null;
+            _destinationLocation = null;
+            _fareController.clear();
+          });
+          try {
+            if (await _mapController?.style.styleSourceExists("route-source") == true) {
+              await _mapController?.style.removeStyleLayer("route-layer");
+              await _mapController?.style.removeStyleSource("route-source");
+            }
+          } catch (_) {}
+          _centerMapOnUser(forceResetManual: false);
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al solicitar viaje: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isCreatingTrip = false);
     }
   }
 
@@ -965,22 +1130,47 @@ class _PassengerHomeScreenState extends State<PassengerHomeScreen> {
 
                           const SizedBox(height: 12),
 
+                          // Campo de precio (visible cuando hay destino seleccionado)
+                          if (_destinationName != null) ...[
+                            TextField(
+                              controller: _fareController,
+                              keyboardType: TextInputType.number,
+                              style: GoogleFonts.inter(
+                                color: AppColors.textPrimary,
+                                fontSize: 18,
+                                fontWeight: FontWeight.w700,
+                              ),
+                              decoration: InputDecoration(
+                                hintText: 'Precio propuesto',
+                                hintStyle: GoogleFonts.inter(color: AppColors.textMuted),
+                                prefixIcon: const Icon(Icons.attach_money_rounded, color: AppColors.accentLime),
+                                filled: true,
+                                fillColor: AppColors.cardElevated,
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  borderSide: const BorderSide(color: AppColors.borderSubtle),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  borderSide: const BorderSide(color: AppColors.borderSubtle),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  borderSide: const BorderSide(color: AppColors.accentLime, width: 1.5),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                          ],
+
                           SizedBox(
                             width: double.infinity,
                             child: ElevatedButton(
-                              onPressed: _destinationName == null 
-                                ? _openSearchBottomSheet 
-                                : () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) => NegotiationRadarScreen(
-                                          isCorporateMode: _isCorporateMode,
-                                          techoCobertura: _isCorporateMode ? _techoCobertura : 0.0,
-                                        ),
-                                      ),
-                                    );
-                                  },
+                              onPressed: _isCreatingTrip
+                                ? null
+                                : (_destinationName == null
+                                  ? _openSearchBottomSheet
+                                  : _createTripAndNavigate),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: _destinationName == null ? AppColors.surfaceLight : AppColors.accentLime,
                                 foregroundColor: _destinationName == null ? AppColors.textPrimary : AppColors.textOnAccent,
@@ -991,22 +1181,30 @@ class _PassengerHomeScreenState extends State<PassengerHomeScreen> {
                                 ),
                                 elevation: 0,
                               ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(_destinationName == null ? Icons.search : Icons.local_taxi, size: 20),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    _destinationName == null 
-                                      ? '¿A dónde y por cuánto?' 
-                                      : (_isCorporateMode ? 'Solicitar Viaje Corp' : 'Solicitar Viaje'),
-                                    style: GoogleFonts.inter(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.w800,
+                              child: _isCreatingTrip
+                                ? const SizedBox(
+                                    width: 24, height: 24,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2.5,
+                                      color: AppColors.textOnAccent,
                                     ),
+                                  )
+                                : Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(_destinationName == null ? Icons.search : Icons.local_taxi, size: 20),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        _destinationName == null
+                                          ? '¿A dónde y por cuánto?'
+                                          : (_isCorporateMode ? 'Solicitar Viaje Corp' : 'Solicitar Viaje'),
+                                        style: GoogleFonts.inter(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                ],
-                              ),
                             ),
                           ),
 
@@ -1160,12 +1358,20 @@ class _SearchLocationSheetState extends State<SearchLocationSheet> {
     final lon = widget.currentPosition.lng;
     final lat = widget.currentPosition.lat;
     
+    // Bounding box dinámico de aprox ~22km a la redonda para limitar estrictamente a la ciudad actual
+    final minLon = lon - 0.2;
+    final minLat = lat - 0.2;
+    final maxLon = lon + 0.2;
+    final maxLat = lat + 0.2;
+    
     final url = Uri.parse(
         'https://api.mapbox.com/geocoding/v5/mapbox.places/${Uri.encodeComponent(query)}.json'
         '?proximity=$lon,$lat'
-        '&types=poi,address,neighborhood,place'
+        '&bbox=$minLon,$minLat,$maxLon,$maxLat'
+        '&types=poi,address,neighborhood'
         '&country=co'
-        '&bbox=-73.30,10.40,-73.20,10.55'
+        '&autocomplete=true'
+        '&fuzzyMatch=true'
         '&access_token=$MAPBOX_TOKEN'
         '&language=es');
 

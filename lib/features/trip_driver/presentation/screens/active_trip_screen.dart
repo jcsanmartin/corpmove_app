@@ -8,6 +8,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:corpmove_app/core/theme/app_theme.dart';
 import 'package:corpmove_app/core/widgets/custom_map_mapbox.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:corpmove_app/features/data/repositories/trip_supabase_repository.dart';
 
 const String MAPBOX_TOKEN = "pk.eyJ1IjoiamNzYW5tYXJ0aW4iLCJhIjoiY21vYWJsZmUzMDR5eTJ4cTA5MmFvbmJpbSJ9.OZtHCg1w7y-HUow9Cl9Vsw";
 
@@ -214,10 +215,8 @@ class _ActiveTripScreenState extends State<ActiveTripScreen> {
     if (tripId == null || tripId == 'mock-trip-123') return; 
 
     try {
-      await Supabase.instance.client
-          .from('trips')
-          .update({'status': status})
-          .eq('id', tripId);
+      final tripRepo = TripSupabaseRepository();
+      await tripRepo.updateTripStatus(tripId, status);
     } catch (e) {
       debugPrint('Error updating trip status: $e');
     }
@@ -225,12 +224,12 @@ class _ActiveTripScreenState extends State<ActiveTripScreen> {
 
   void _onPhaseButtonPressed() async {
     if (_currentPhase == 'searching_passenger') {
-      setState(() => _currentPhase = 'in_progress');
-      await _updateTripStatus('in_progress');
+      setState(() => _currentPhase = 'en_curso');
+      await _updateTripStatus('en_curso');
       await _drawRouteToDestination(mbx.Position(_dropoffLng, _dropoffLat));
-    } else if (_currentPhase == 'in_progress') {
-      setState(() => _currentPhase = 'completed');
-      await _updateTripStatus('completed');
+    } else if (_currentPhase == 'en_curso') {
+      setState(() => _currentPhase = 'finalizado');
+      await _updateTripStatus('finalizado');
       if (mounted) {
         Navigator.pop(context); 
       }
@@ -242,7 +241,7 @@ class _ActiveTripScreenState extends State<ActiveTripScreen> {
     String buttonText = 'Llegué al punto de recogida';
     Color buttonColor = AppColors.accentLime;
     
-    if (_currentPhase == 'in_progress') {
+    if (_currentPhase == 'en_curso') {
       buttonText = 'Finalizar Viaje';
       buttonColor = AppColors.info;
     }

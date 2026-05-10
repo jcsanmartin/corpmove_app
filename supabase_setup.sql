@@ -50,3 +50,19 @@ CREATE POLICY "allow_all_authenticated" ON users
 
 # 5. STORAGE BUCKET para fotos de perfil
 # Ir a Storage > New Bucket > Nombre: "profile-photos" > Public: TRUE
+
+# 6. TABLA DE UBICACIONES DE CONDUCTORES (tracking en tiempo real)
+CREATE TABLE IF NOT EXISTS driver_locations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  driver_id TEXT UNIQUE NOT NULL,
+  driver_name TEXT,
+  latitude DOUBLE PRECISION NOT NULL,
+  longitude DOUBLE PRECISION NOT NULL,
+  is_active BOOLEAN DEFAULT true,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER PUBLICATION supabase_realtime ADD TABLE driver_locations;
+ALTER TABLE driver_locations ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "allow_all_driver_locations" ON driver_locations
+  FOR ALL USING (true);
