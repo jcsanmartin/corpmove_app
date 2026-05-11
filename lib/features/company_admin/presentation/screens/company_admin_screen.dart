@@ -5,6 +5,9 @@ import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:corpmove_app/core/theme/app_theme.dart';
 import 'package:corpmove_app/features/admin/application/admin_provider.dart';
+import 'ca_dashboard_tab.dart';
+import 'ca_employees_tab.dart';
+import 'ca_reports_tab.dart';
 
 class CompanyAdminScreen extends StatefulWidget {
   const CompanyAdminScreen({super.key});
@@ -14,8 +17,27 @@ class CompanyAdminScreen extends StatefulWidget {
 }
 
 class _CompanyAdminScreenState extends State<CompanyAdminScreen> {
-  int _currentIndex =
-      0; // 0: Dashboard, 1: Empleados, 2: Configuración, 3: Reportes
+  int _currentIndex = 0;
+  // 0: Dashboard, 1: Empleados, 2: Convenio, 3: Reportes, 4: Solicitudes
+
+  static const _navItems = [
+    {'icon': Icons.dashboard_rounded, 'label': 'Dashboard'},
+    {'icon': Icons.people_rounded, 'label': 'Empleados'},
+    {'icon': Icons.verified_rounded, 'label': 'Convenio'},
+    {'icon': Icons.analytics_rounded, 'label': 'Reportes'},
+    {'icon': Icons.pending_actions_rounded, 'label': 'Solicitudes'},
+  ];
+
+  String _getTitle() {
+    switch (_currentIndex) {
+      case 0: return 'Panel Corporativo';
+      case 1: return 'Empleados';
+      case 2: return 'Convenio';
+      case 3: return 'Reportes';
+      case 4: return 'Solicitudes';
+      default: return 'Panel Corporativo';
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -24,90 +46,57 @@ class _CompanyAdminScreenState extends State<CompanyAdminScreen> {
       child: Scaffold(
         backgroundColor: AppColors.scaffoldLight,
         appBar: AppBar(
-          title: Text('Panel Corporativo',
-              style: GoogleFonts.inter(
-                  fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+          title: Text(_getTitle(), style: GoogleFonts.inter(fontWeight: FontWeight.w700, color: AppColors.textPrimary, fontSize: 18)),
           backgroundColor: AppColors.scaffoldLight,
           foregroundColor: AppColors.textPrimary,
           elevation: 0,
+          surfaceTintColor: Colors.transparent,
           leading: Builder(
-            builder: (context) => Padding(
+            builder: (ctx) => Padding(
               padding: const EdgeInsets.only(left: 16, top: 8, bottom: 8),
               child: GestureDetector(
-                onTap: () => Scaffold.of(context).openDrawer(),
+                onTap: () => Scaffold.of(ctx).openDrawer(),
                 child: Container(
                   decoration: BoxDecoration(
                     color: AppColors.surfaceLight,
                     shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.3),
-                        blurRadius: 10,
-                        spreadRadius: 1,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
+                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 8, offset: const Offset(0, 2))],
                   ),
-                  child: const Icon(Icons.menu_rounded,
-                      color: AppColors.textPrimary, size: 24),
+                  child: const Icon(Icons.menu_rounded, color: AppColors.textPrimary, size: 22),
                 ),
               ),
             ),
           ),
-          actions: [
-            Builder(builder: (context) {
-              return IconButton(
-                icon: const Icon(Icons.notifications_outlined),
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Sin notificaciones nuevas')),
-                  );
-                },
-              );
-            }),
-          ],
+          bottom: PreferredSize(preferredSize: const Size.fromHeight(1), child: Container(height: 1, color: AppColors.borderSubtle)),
         ),
-        drawer: Builder(
-          builder: (context) => _buildDrawer(context),
-        ),
+        drawer: Builder(builder: (ctx) => _buildDrawer(ctx)),
         body: Consumer<AdminProvider>(
-          builder: (context, provider, child) {
-            // Manejar SnackBars para éxito/error global
+          builder: (context, provider, _) {
             _handleSnackBars(context, provider);
 
-            if (provider.state == AdminState.loading &&
-                provider.companyData == null) {
-              return const Center(child: CircularProgressIndicator());
+            if (provider.state == AdminState.loading && provider.companyData == null) {
+              return const Center(child: CircularProgressIndicator(color: AppColors.accentLime));
             }
-
             if (provider.state == AdminState.noCompany) {
               return _buildNoCompanyView(context, provider);
             }
-
-            if (provider.state == AdminState.error &&
-                provider.companyData == null) {
-              return Center(child: Text('Error: ${provider.errorMessage}'));
+            if (provider.state == AdminState.error && provider.companyData == null) {
+              return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                const Icon(Icons.error_outline_rounded, size: 56, color: AppColors.error),
+                const SizedBox(height: 16),
+                Text('Error al conectar', style: GoogleFonts.inter(color: AppColors.textPrimary, fontSize: 16, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 8),
+                Text(provider.errorMessage, style: GoogleFonts.inter(color: AppColors.textMuted, fontSize: 12), textAlign: TextAlign.center),
+              ]));
             }
 
-            final company = provider.companyData;
-            if (company == null) {
-              return const Center(child: Text('Cargando configuración...'));
-            }
-
-            // Alternar vista según el índice del Drawer
             switch (_currentIndex) {
-              case 0:
-                return _buildDashboardView(provider);
-              case 1:
-                return _buildEmployeesView(provider);
-              case 2:
-                return _buildConfigView(context, provider, company);
-              case 3:
-                return _buildReportsView(context);
-              case 4:
-                return _buildPendingRequestsView(provider);
-              default:
-                return _buildDashboardView(provider);
+              case 0: return CaDashboardTab(provider: provider);
+              case 1: return CaEmployeesTab(provider: provider);
+              case 2: return _buildConfigView(context, provider, provider.companyData ?? {});
+              case 3: return CaReportsTab(provider: provider);
+              case 4: return _buildPendingRequestsView(provider);
+              default: return CaDashboardTab(provider: provider);
             }
           },
         ),
@@ -115,895 +104,314 @@ class _CompanyAdminScreenState extends State<CompanyAdminScreen> {
     );
   }
 
-  // ==========================================
-  // VISTAS PRINCIPALES
-  // ==========================================
+  // ── Drawer ──
+  Widget _buildDrawer(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+    final userName = (user?.displayName?.isNotEmpty == true) ? user!.displayName! : (user?.email?.split('@').first ?? 'Usuario');
+    final userEmail = user?.email ?? '';
 
-  Widget _buildDashboardView(AdminProvider provider) {
-    return ListView(
-      padding: const EdgeInsets.all(24),
-      children: [
-        _buildEnterpriseCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Resumen de Empleados',
-                style: GoogleFonts.inter(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  _buildStat('Activos', '${provider.activeEmployeesCount}',
-                      Colors.green),
-                  _buildStat('Pendientes', '${provider.pendingEmployeesCount}',
-                      Colors.orange),
-                  _buildStat('Inactivos', '${provider.inactiveEmployeesCount}',
-                      Colors.grey),
-                ],
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 24),
-        _buildEnterpriseCard(
-          child: Text(
-            'Bienvenido al panel central de administración. Desde el menú lateral puedes gestionar a tus empleados, modificar el convenio o descargar reportes de consumo.',
-            style: GoogleFonts.inter(
-                color: AppColors.textMuted, fontSize: 16, height: 1.5),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildEmployeesView(AdminProvider provider) {
-    return ListView(
-      padding: const EdgeInsets.all(20),
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'Gestión de Empleados',
-              style: GoogleFonts.inter(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary),
-            ),
-            ElevatedButton.icon(
-              onPressed: () => _showEmployeeDialog(context, provider, null),
-              icon: const Icon(Icons.add),
-              label: const Text('Agregar'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.accentLime, // Blue 600
-                foregroundColor: Colors.white,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8)),
+    return Drawer(
+      backgroundColor: AppColors.surfaceLight,
+      child: Column(
+        children: [
+          // Header con gradiente
+          Container(
+            width: double.infinity,
+            padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top + 24, bottom: 24, left: 20, right: 20),
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Color(0xFF1B5E20), Color(0xFF2E7D32)],
+                begin: Alignment.topLeft, end: Alignment.bottomRight,
               ),
             ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        _buildEnterpriseCard(
-          padding: EdgeInsets.zero,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (provider.employees.isEmpty)
-                Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Text('No hay empleados registrados en esta empresa.',
-                      style: GoogleFonts.inter(color: AppColors.textMuted)),
-                )
-              else
-                ListView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: provider.employees.length,
-                  itemBuilder: (context, index) {
-                    final emp = provider.employees[index];
-                    final isActive = emp['is_active'] == true ||
-                        emp['estado_solicitud'] == 'aprobado';
-                    return _buildEmployeeTile(
-                      emp['name'] ??
-                          emp['display_name'] ??
-                          'Usuario sin nombre',
-                      emp['email'] ?? 'Sin correo',
-                      isActive,
-                      provider,
-                      (emp['id'] ?? '').toString(),
-                    );
-                  },
-                ),
-            ],
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              CircleAvatar(
+                radius: 32,
+                backgroundColor: Colors.white24,
+                backgroundImage: _getAvatarImageProvider(user?.photoURL),
+                child: user?.photoURL == null ? Text(userName.isNotEmpty ? userName[0].toUpperCase() : 'A', style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 24)) : null,
+              ),
+              const SizedBox(height: 12),
+              Text(userName, style: GoogleFonts.inter(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700)),
+              const SizedBox(height: 2),
+              Text(userEmail, style: GoogleFonts.inter(color: Colors.white70, fontSize: 12)),
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(8)),
+                child: Text('Admin Corporativo', style: GoogleFonts.inter(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600)),
+              ),
+            ]),
           ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildConfigView(BuildContext context, AdminProvider provider,
-      Map<String, dynamic> company) {
-    return ListView(
-      padding: const EdgeInsets.all(24),
-      children: [
-        _buildEnterpriseCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Configuración de Convenio',
-                style: GoogleFonts.inter(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary),
-              ),
-              const SizedBox(height: 24),
-              _buildConfigItem(
-                context,
-                provider,
-                'Techo por viaje',
-                '\$${company['corporate_limit'] ?? 0}',
-                'corporate_limit',
-                true,
-              ),
-              const Divider(),
-              _buildConfigItem(
-                context,
-                provider,
-                'Viajes diarios máximos',
-                '${company['daily_trips_limit'] ?? 0}',
-                'daily_trips_limit',
-                true,
-              ),
-              const Divider(),
-              _buildConfigItem(
-                context,
-                provider,
-                'Horario permitido',
-                company['allowed_schedules'] is List
-                    ? company['allowed_schedules'].join(', ')
-                    : (company['allowed_schedules'] ?? 'Sin definir')
-                        .toString(),
-                'allowed_schedules',
-                false,
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildReportsView(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.all(24),
-      children: [
-        _buildEnterpriseCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              const Icon(Icons.analytics, size: 60, color: Color(0xFF0F172A)),
-              const SizedBox(height: 24),
-              Text(
-                'Reportes de Facturación Mensual',
-                style: GoogleFonts.inter(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Descarga el detalle de todos los viajes corporativos realizados por tus empleados durante el último mes de facturación.',
-                textAlign: TextAlign.center,
-                style:
-                    GoogleFonts.inter(color: AppColors.textMuted, height: 1.5),
-              ),
-              const SizedBox(height: 32),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Generando archivo CSV...'),
-                        backgroundColor: Colors.indigo,
-                      ),
-                    );
-                  },
-                  icon: const Icon(Icons.download),
-                  label: const Text('Descargar CSV'),
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    backgroundColor: AppColors.accentLime, // Blue 600
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
+          // Nav items
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              children: [
+                ..._navItems.asMap().entries.map((entry) {
+                  final i = entry.key;
+                  final item = entry.value;
+                  final selected = _currentIndex == i;
+                  return Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: selected ? AppColors.accentLime.withOpacity(0.12) : Colors.transparent,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: ListTile(
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      leading: Icon(item['icon'] as IconData, color: selected ? AppColors.accentLime : AppColors.textMuted, size: 22),
+                      title: Text(item['label'] as String, style: GoogleFonts.inter(fontWeight: selected ? FontWeight.w700 : FontWeight.w400, color: selected ? AppColors.accentLime : AppColors.textSecondary, fontSize: 14)),
+                      trailing: selected ? Container(width: 4, height: 20, decoration: BoxDecoration(color: AppColors.accentLime, borderRadius: BorderRadius.circular(2))) : null,
+                      onTap: () { setState(() => _currentIndex = i); Navigator.pop(context); },
+                    ),
+                  );
+                }),
+                const Divider(color: AppColors.borderSubtle, indent: 16, endIndent: 16),
+                Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 8),
+                  child: ListTile(
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    leading: const Icon(Icons.logout_rounded, color: AppColors.error, size: 22),
+                    title: Text('Cerrar sesión', style: GoogleFonts.inter(color: AppColors.error, fontWeight: FontWeight.w600, fontSize: 14)),
+                    onTap: () { Navigator.pop(context); Navigator.of(context).pushNamedAndRemoveUntil('/', (r) => false); },
                   ),
                 ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  // ==========================================
-  // COMPONENTES SECUNDARIOS Y MÉTODOS
-  // ==========================================
-
-  Widget _buildEnterpriseCard(
-      {required Widget child,
-      EdgeInsetsGeometry padding = const EdgeInsets.all(24)}) {
-    return Container(
-      padding: padding,
-      decoration: AppDecorations.cardElevated.copyWith(
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.borderSubtle),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+              ],
+            ),
           ),
         ],
       ),
-      child: child,
     );
   }
 
-  ImageProvider? _getAvatarImageProvider(String? url) {
-    if (url == null || url.isEmpty) return null;
-    if (url.startsWith('data:image')) {
-      try {
-        final base64Str = url.split(',').last;
-        return MemoryImage(base64Decode(base64Str));
-      } catch (e) {
-        return null;
-      }
-    }
-    return NetworkImage(url);
-  }
-
-  // ==========================================
-  // VISTA DE SOLICITUDES PENDIENTES
-  // ==========================================
-
-  Widget _buildPendingRequestsView(AdminProvider provider) {
-    final pendingDocs = provider.employees
-        .where((e) => e['estado_solicitud'] == 'pendiente')
-        .toList();
-
-    return ListView(
-      padding: const EdgeInsets.all(20),
-      children: [
-        Text(
-          'Solicitudes Corporativas Pendientes',
-          style: GoogleFonts.inter(
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary),
-        ),
-        const SizedBox(height: 16),
-        if (pendingDocs.isEmpty)
-          _buildEnterpriseCard(
-            child: Column(
-              children: [
-                const Icon(Icons.inbox, size: 60, color: Color(0xFF64748B)),
-                const SizedBox(height: 16),
-                Text('No hay solicitudes pendientes',
-                    style: GoogleFonts.inter(
-                        color: AppColors.textMuted, fontSize: 16)),
-              ],
-            ),
-          )
-        else
-          ...pendingDocs.map((data) {
-            final docId = (data['id'] ?? '').toString();
-            final nombre = data['full_name'] ??
-                data['displayName'] ??
-                data['name'] ??
-                'Sin nombre';
-            final email = data['email'] ?? '';
-            final notas = data['notas'] ?? '';
-            final photoUrl = data['photo_url'];
-
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 16),
-              child: _buildEnterpriseCard(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        CircleAvatar(
-                          backgroundImage: _getAvatarImageProvider(photoUrl),
-                          backgroundColor: AppColors.borderSubtle,
-                          child: photoUrl == null
-                              ? Text(
-                                  nombre.isNotEmpty
-                                      ? nombre[0].toUpperCase()
-                                      : 'U',
-                                  style: GoogleFonts.inter(
-                                      color: AppColors.textPrimary,
-                                      fontWeight: FontWeight.bold))
-                              : null,
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(nombre,
-                                  style: GoogleFonts.inter(
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 16,
-                                      color: AppColors.textPrimary)),
-                              Text(email,
-                                  style: GoogleFonts.inter(
-                                      color: AppColors.textMuted)),
-                            ],
-                          ),
-                        ),
-                        Chip(
-                          label: Text('EMPLOYEE',
-                              style: GoogleFonts.inter(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.accentLime)),
-                          backgroundColor:
-                              AppColors.accentLime.withOpacity(0.1),
-                          side: BorderSide.none,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    if (notas.isNotEmpty)
-                      Text('Notas: $notas',
-                          style: GoogleFonts.inter(
-                              color: const Color(0xFF334155))),
-                    const SizedBox(height: 24),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        TextButton.icon(
-                          onPressed: () => provider.rejectRequest(docId),
-                          icon: const Icon(Icons.close, color: Colors.red),
-                          label: Text('Rechazar',
-                              style: GoogleFonts.inter(
-                                  color: Colors.red,
-                                  fontWeight: FontWeight.w600)),
-                        ),
-                        const SizedBox(width: 16),
-                        ElevatedButton.icon(
-                          onPressed: () => provider.approveRequest(docId),
-                          icon: const Icon(Icons.check),
-                          label: Text('Aprobar',
-                              style: GoogleFonts.inter(
-                                  fontWeight: FontWeight.w600)),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.green,
-                            foregroundColor: Colors.white,
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8)),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            );
-          }),
-      ],
-    );
-  }
-
-  // ==========================================
-  // COMPONENTES SECUNDARIOS Y MÉTODOS
-  // ==========================================
-
+  // ── Sin empresa ──
   Widget _buildNoCompanyView(BuildContext context, AdminProvider provider) {
-    final TextEditingController companyController = TextEditingController();
-
+    final ctrl = TextEditingController();
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
-        child: _buildEnterpriseCard(
+        child: Container(
           padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.business, size: 64, color: Color(0xFF0F172A)),
-              const SizedBox(height: 24),
-              Text(
-                'Bienvenido al Panel de Empresa',
-                style: GoogleFonts.inter(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.textPrimary),
-                textAlign: TextAlign.center,
+          decoration: BoxDecoration(color: AppColors.cardLight, borderRadius: BorderRadius.circular(20), border: Border.all(color: AppColors.borderSubtle)),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Container(
+              width: 72, height: 72,
+              decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFF1B5E20), Color(0xFF4CAF50)]), borderRadius: BorderRadius.circular(20)),
+              child: const Icon(Icons.business_rounded, color: Colors.white, size: 36),
+            ),
+            const SizedBox(height: 24),
+            Text('Bienvenido al Panel Corporativo', style: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.textPrimary), textAlign: TextAlign.center),
+            const SizedBox(height: 12),
+            Text('Registra tu empresa para comenzar a gestionar los beneficios de tus empleados.', style: GoogleFonts.inter(color: AppColors.textMuted, height: 1.5), textAlign: TextAlign.center),
+            const SizedBox(height: 28),
+            TextField(
+              controller: ctrl,
+              style: GoogleFonts.inter(color: AppColors.textPrimary),
+              decoration: InputDecoration(
+                labelText: 'Nombre de la empresa',
+                labelStyle: GoogleFonts.inter(color: AppColors.textMuted),
+                prefixIcon: const Icon(Icons.apartment_rounded, color: AppColors.textMuted),
+                filled: true, fillColor: AppColors.surfaceLight,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.borderSubtle)),
+                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.accentLime, width: 1.5)),
               ),
-              const SizedBox(height: 16),
-              Text(
-                'Para comenzar a gestionar los beneficios corporativos de tus empleados, primero debes registrar tu empresa en la plataforma.',
-                textAlign: TextAlign.center,
-                style:
-                    GoogleFonts.inter(color: AppColors.textMuted, height: 1.5),
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () { final n = ctrl.text.trim(); if (n.isNotEmpty) provider.createCompany(n); },
+                style: ElevatedButton.styleFrom(backgroundColor: AppColors.accentLime, foregroundColor: AppColors.textOnAccent, elevation: 0, padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                child: Text('Registrar Empresa', style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w700)),
               ),
-              const SizedBox(height: 32),
-              TextField(
-                controller: companyController,
-                style: GoogleFonts.inter(color: AppColors.textPrimary),
-                decoration: InputDecoration(
-                  labelText: 'Nombre de la empresa',
-                  labelStyle: GoogleFonts.inter(color: AppColors.textMuted),
-                  filled: true,
-                  fillColor: const Color(0xFFF8FAFC),
-                  border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none),
-                  enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
-                  focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(
-                          color: Color(0xFF2563EB), width: 1.5)),
-                  prefixIcon:
-                      const Icon(Icons.apartment, color: Color(0xFF64748B)),
-                ),
-              ),
-              const SizedBox(height: 32),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {
-                    final name = companyController.text.trim();
-                    if (name.isNotEmpty) {
-                      provider.createCompany(name);
-                    } else {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                            content:
-                                Text('Por favor, ingresa un nombre válido')),
-                      );
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    backgroundColor: AppColors.accentLime, // Blue 600
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                  ),
-                  child: Text('Registrar Empresa',
-                      style: GoogleFonts.inter(
-                          fontSize: 16, fontWeight: FontWeight.w600)),
-                ),
-              ),
-            ],
-          ),
+            ),
+          ]),
         ),
       ),
     );
   }
 
-  void _handleSnackBars(BuildContext context, AdminProvider provider) {
-    if (provider.state == AdminState.success ||
-        provider.state == AdminState.error) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (provider.state == AdminState.success) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Cambio guardado exitosamente.'),
-              backgroundColor: Colors.green,
-              duration: Duration(seconds: 2),
-            ),
-          );
-        } else if (provider.state == AdminState.error) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Error: ${provider.errorMessage}'),
-              backgroundColor: Colors.redAccent,
-              duration: const Duration(seconds: 3),
-            ),
-          );
-        }
-        provider
-            .clearState(); // Limpiamos el estado para que no vuelva a saltar
-      });
-    }
-  }
-
-  // 🔥 Drawer ADMIN COMPLETO ACTUALIZADO
-  Widget _buildDrawer(BuildContext context) {
-    final user = FirebaseAuth.instance.currentUser;
-    final userName =
-        (user?.displayName != null && user!.displayName!.isNotEmpty)
-            ? user.displayName!
-            : (user?.email?.split('@').first ?? 'Usuario');
-    final userEmail = user?.email ?? 'correo@ejemplo.com';
-
-    return Drawer(
-      child: ListView(
-        padding: EdgeInsets.zero,
-        children: [
-          Container(
-            padding: EdgeInsets.only(
-                top: MediaQuery.of(context).padding.top + 24,
-                bottom: 24,
-                left: 16,
-                right: 16),
-            decoration: const BoxDecoration(
-              color: AppColors.surfaceLight, // Slate 900
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CircleAvatar(
-                  radius: 30,
-                  backgroundColor: Colors.white,
-                  backgroundImage: _getAvatarImageProvider(user?.photoURL),
-                  child: user?.photoURL == null
-                      ? const Icon(Icons.person,
-                          size: 40, color: Color(0xFF0F172A))
-                      : null,
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  userName,
-                  style: GoogleFonts.inter(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  userEmail,
-                  style: GoogleFonts.inter(color: Colors.white70, fontSize: 13),
-                ),
-              ],
-            ),
-          ),
-          ListTile(
-            leading: Icon(Icons.dashboard,
-                color:
-                    _currentIndex == 0 ? const Color(0xFF1A237E) : Colors.grey),
-            title: Text('Dashboard',
-                style: TextStyle(
-                    fontWeight: _currentIndex == 0
-                        ? FontWeight.bold
-                        : FontWeight.normal)),
-            selected: _currentIndex == 0,
-            onTap: () {
-              setState(() => _currentIndex = 0);
-              Navigator.pop(context); // Cierra drawer
-            },
-          ),
-          ListTile(
-            leading: Icon(Icons.people,
-                color:
-                    _currentIndex == 1 ? const Color(0xFF1A237E) : Colors.grey),
-            title: Text('Empleados',
-                style: TextStyle(
-                    fontWeight: _currentIndex == 1
-                        ? FontWeight.bold
-                        : FontWeight.normal)),
-            selected: _currentIndex == 1,
-            onTap: () {
-              setState(() => _currentIndex = 1);
-              Navigator.pop(context);
-            },
-          ),
-          ListTile(
-            leading: Icon(Icons.settings,
-                color:
-                    _currentIndex == 2 ? const Color(0xFF1A237E) : Colors.grey),
-            title: Text('Configuración de convenio',
-                style: TextStyle(
-                    fontWeight: _currentIndex == 2
-                        ? FontWeight.bold
-                        : FontWeight.normal)),
-            selected: _currentIndex == 2,
-            onTap: () {
-              setState(() => _currentIndex = 2);
-              Navigator.pop(context);
-            },
-          ),
-          ListTile(
-            leading: Icon(Icons.pending_actions,
-                color:
-                    _currentIndex == 4 ? const Color(0xFF1A237E) : Colors.grey),
-            title: Text('Solicitudes pendientes',
-                style: TextStyle(
-                    fontWeight: _currentIndex == 4
-                        ? FontWeight.bold
-                        : FontWeight.normal)),
-            selected: _currentIndex == 4,
-            onTap: () {
-              setState(() => _currentIndex = 4);
-              Navigator.pop(context);
-            },
-          ),
-          ListTile(
-            leading: Icon(Icons.bar_chart,
-                color:
-                    _currentIndex == 3 ? const Color(0xFF1A237E) : Colors.grey),
-            title: Text('Reportes',
-                style: TextStyle(
-                    fontWeight: _currentIndex == 3
-                        ? FontWeight.bold
-                        : FontWeight.normal)),
-            selected: _currentIndex == 3,
-            onTap: () {
-              setState(() => _currentIndex = 3);
-              Navigator.pop(context);
-            },
-          ),
-          const Divider(),
-          ListTile(
-            leading: const Icon(Icons.logout, color: Colors.grey),
-            title: const Text('Cerrar sesión'),
-            onTap: () {
-              Navigator.pop(context);
-              Navigator.of(context)
-                  .pushNamedAndRemoveUntil('/', (route) => false);
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  // 📊 Stats Card Element
-  Widget _buildStat(String label, String value, Color color) {
-    return Column(
+  // ── Configuración de convenio ──
+  Widget _buildConfigView(BuildContext context, AdminProvider provider, Map<String, dynamic> company) {
+    return ListView(
+      padding: const EdgeInsets.all(20),
       children: [
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 28,
-            fontWeight: FontWeight.bold,
-            color: color,
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(colors: [Color(0xFF1B5E20), Color(0xFF388E3C)], begin: Alignment.topLeft, end: Alignment.bottomRight),
+            borderRadius: BorderRadius.circular(18),
           ),
+          child: Row(children: [
+            const Icon(Icons.verified_rounded, color: Colors.white, size: 32),
+            const SizedBox(width: 16),
+            Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('Configuración de Convenio', style: GoogleFonts.inter(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700)),
+              Text('Ajusta los parámetros del acuerdo corporativo', style: GoogleFonts.inter(color: Colors.white70, fontSize: 12)),
+            ]),
+          ]),
         ),
-        Text(label, style: const TextStyle(color: Colors.grey)),
+        const SizedBox(height: 20),
+        Container(
+          decoration: BoxDecoration(color: AppColors.cardLight, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppColors.borderSubtle)),
+          child: Column(children: [
+            _buildConfigItem(context, provider, 'Techo por viaje', '\$${company['corporate_limit'] ?? 0}', 'corporate_limit', true),
+            const Divider(color: AppColors.borderSubtle, height: 1),
+            _buildConfigItem(context, provider, 'Viajes diarios máximos', '${company['daily_trips_limit'] ?? 0}', 'daily_trips_limit', true),
+            const Divider(color: AppColors.borderSubtle, height: 1),
+            _buildConfigItem(context, provider, 'Horario permitido', company['allowed_schedules'] is List ? (company['allowed_schedules'] as List).join(', ') : (company['allowed_schedules'] ?? 'Sin definir').toString(), 'allowed_schedules', false),
+          ]),
+        ),
       ],
     );
   }
 
-  // ⚙️ Config items Element
-  Widget _buildConfigItem(BuildContext context, AdminProvider provider,
-      String label, String value, String fieldKey, bool isNumber) {
+  Widget _buildConfigItem(BuildContext ctx, AdminProvider p, String label, String value, String fieldKey, bool isNumber) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Expanded(
-              flex: 2,
-              child: Text(label, style: const TextStyle(fontSize: 16))),
-          Expanded(
-              flex: 2,
-              child: Text(
-                value,
-                style:
-                    const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-              )),
-          TextButton(
-            onPressed: () => _showEditDialog(
-                context, provider, label, value, fieldKey, isNumber),
-            child: const Text('Editar'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Dialog para editar
-  void _showEditDialog(BuildContext context, AdminProvider provider,
-      String title, String currentValue, String fieldKey, bool isNumber) {
-    final TextEditingController editController = TextEditingController(
-        text: currentValue.replaceAll('\$', '').replaceAll(',', ''));
-
-    showDialog(
-      context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          title: Text('Editar $title',
-              style: const TextStyle(fontWeight: FontWeight.bold)),
-          content: TextField(
-            controller: editController,
-            keyboardType: isNumber ? TextInputType.number : TextInputType.text,
-            decoration: const InputDecoration(
-              border: OutlineInputBorder(),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child:
-                  const Text('Cancelar', style: TextStyle(color: Colors.grey)),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                Navigator.pop(dialogContext);
-                dynamic newValue;
-                if (isNumber) {
-                  if (fieldKey == 'daily_trips_limit') {
-                    newValue = int.tryParse(editController.text) ?? (double.tryParse(editController.text)?.toInt() ?? 0);
-                  } else {
-                    newValue = double.tryParse(editController.text) ?? 0.0;
-                  }
-                } else {
-                  if (fieldKey == 'allowed_schedules') {
-                    newValue = [editController.text];
-                  } else {
-                    newValue = editController.text;
-                  }
-                }
-                await provider.updateConfigField(fieldKey, newValue);
-              },
-              child: const Text('Guardar'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  // 👤 Empleado Tile
-  Widget _buildEmployeeTile(String name, String email, bool isActive,
-      AdminProvider provider, String uid) {
-    return ListTile(
-      leading: CircleAvatar(
-        backgroundColor:
-            isActive ? Colors.green.shade100 : Colors.grey.shade200,
-        child: Icon(
-          Icons.person,
-          color: isActive ? Colors.green : Colors.grey,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      child: Row(children: [
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(label, style: GoogleFonts.inter(fontSize: 13, color: AppColors.textMuted)),
+          const SizedBox(height: 4),
+          Text(value, style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+        ])),
+        TextButton.icon(
+          onPressed: () => _showEditDialog(ctx, p, label, value, fieldKey, isNumber),
+          icon: const Icon(Icons.edit_outlined, size: 16, color: AppColors.accentLime),
+          label: Text('Editar', style: GoogleFonts.inter(color: AppColors.accentLime, fontWeight: FontWeight.w600, fontSize: 13)),
         ),
-      ),
-      title: Text(name),
-      subtitle: Text(email),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          IconButton(
-            icon: const Icon(Icons.edit, color: Colors.blue),
-            onPressed: () => _showEmployeeDialog(
-                context, provider, {'id': uid, 'name': name, 'email': email}),
+      ]),
+    );
+  }
+
+  void _showEditDialog(BuildContext ctx, AdminProvider p, String title, String currentValue, String fieldKey, bool isNumber) {
+    final ctrl = TextEditingController(text: currentValue.replaceAll('\$', '').replaceAll(',', ''));
+    showDialog(
+      context: ctx,
+      builder: (dCtx) => AlertDialog(
+        backgroundColor: AppColors.surfaceLight,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text('Editar $title', style: GoogleFonts.inter(fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+        content: TextField(
+          controller: ctrl,
+          keyboardType: isNumber ? TextInputType.number : TextInputType.text,
+          style: GoogleFonts.inter(color: AppColors.textPrimary),
+          decoration: InputDecoration(
+            filled: true, fillColor: AppColors.cardLight,
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.borderSubtle)),
+            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.accentLime, width: 1.5)),
           ),
-          IconButton(
-            icon: const Icon(Icons.delete, color: Colors.red),
-            onPressed: () =>
-                _showDeleteConfirmDialog(context, provider, uid, name),
-          ),
-          Switch(
-            value: isActive,
-            onChanged: (val) {
-              provider.toggleEmployeeStatus(uid, isActive);
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dCtx), child: Text('Cancelar', style: GoogleFonts.inter(color: AppColors.textMuted))),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(dCtx);
+              dynamic v;
+              if (isNumber) {
+                v = fieldKey == 'daily_trips_limit' ? (int.tryParse(ctrl.text) ?? 0) : (double.tryParse(ctrl.text) ?? 0.0);
+              } else {
+                v = fieldKey == 'allowed_schedules' ? [ctrl.text] : ctrl.text;
+              }
+              await p.updateConfigField(fieldKey, v);
             },
-            activeThumbColor: const Color(0xFF1A237E),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.accentLime, foregroundColor: AppColors.textOnAccent, elevation: 0, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+            child: Text('Guardar', style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
           ),
         ],
       ),
     );
   }
 
-  // Dialog para Agregar / Editar Empleado
-  void _showEmployeeDialog(BuildContext context, AdminProvider provider,
-      Map<String, dynamic>? employee) {
-    final bool isEdit = employee != null;
-    final TextEditingController nameController =
-        TextEditingController(text: isEdit ? employee['name'] : '');
-    final TextEditingController emailController =
-        TextEditingController(text: isEdit ? employee['email'] : '');
-
-    showDialog(
-      context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          title: Text(isEdit ? 'Editar Empleado' : 'Agregar Empleado',
-              style: const TextStyle(fontWeight: FontWeight.bold)),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nameController,
-                decoration: const InputDecoration(
-                    labelText: 'Nombre', border: OutlineInputBorder()),
-              ),
-              const SizedBox(height: 15),
-              TextField(
-                controller: emailController,
-                keyboardType: TextInputType.emailAddress,
-                decoration: const InputDecoration(
-                    labelText: 'Correo', border: OutlineInputBorder()),
-              ),
-              if (!isEdit)
-                const Padding(
-                  padding: EdgeInsets.only(top: 10),
-                  child: Text(
-                    'Se creará un perfil base. El empleado podrá registrarse en la app vinculándose a este correo.',
-                    style: TextStyle(fontSize: 12, color: Colors.grey),
-                  ),
-                )
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child:
-                  const Text('Cancelar', style: TextStyle(color: Colors.grey)),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                final name = nameController.text.trim();
-                final email = emailController.text.trim();
-                if (name.isNotEmpty && email.isNotEmpty) {
-                  if (isEdit) {
-                    provider.updateEmployee(
-                        (employee['id'] ?? '').toString(), name, email);
-                  } else {
-                    provider.addEmployee(name, email);
-                  }
-                  Navigator.pop(dialogContext);
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF1A237E),
-                  foregroundColor: Colors.white),
-              child: Text(isEdit ? 'Guardar' : 'Agregar'),
-            ),
-          ],
-        );
-      },
-    );
+  // ── Solicitudes Pendientes ──
+  Widget _buildPendingRequestsView(AdminProvider p) {
+    final pending = p.employees.where((e) => e['estado_solicitud'] == 'pendiente').toList();
+    return pending.isEmpty
+        ? Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+            const Icon(Icons.inbox_rounded, size: 60, color: AppColors.textMuted),
+            const SizedBox(height: 16),
+            Text('Sin solicitudes pendientes', style: GoogleFonts.inter(color: AppColors.textMuted, fontSize: 16)),
+          ]))
+        : ListView.builder(
+            padding: const EdgeInsets.all(20),
+            itemCount: pending.length,
+            itemBuilder: (_, i) {
+              final data = pending[i];
+              final docId = (data['id'] ?? '').toString();
+              final nombre = data['full_name'] ?? data['display_name'] ?? data['name'] ?? 'Sin nombre';
+              final email = data['email'] ?? '';
+              return Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(color: AppColors.cardLight, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppColors.borderSubtle)),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Row(children: [
+                    CircleAvatar(
+                      radius: 24,
+                      backgroundColor: AppColors.warning.withOpacity(0.15),
+                      backgroundImage: _getAvatarImageProvider(data['photo_url']),
+                      child: data['photo_url'] == null ? Text(nombre.isNotEmpty ? nombre[0].toUpperCase() : 'U', style: GoogleFonts.inter(color: AppColors.warning, fontWeight: FontWeight.w800)) : null,
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text(nombre, style: GoogleFonts.inter(fontWeight: FontWeight.w700, color: AppColors.textPrimary, fontSize: 15)),
+                      Text(email, style: GoogleFonts.inter(color: AppColors.textMuted, fontSize: 12)),
+                    ])),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(color: AppColors.warning.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+                      child: Text('Pendiente', style: GoogleFonts.inter(color: AppColors.warning, fontSize: 10, fontWeight: FontWeight.w700)),
+                    ),
+                  ]),
+                  const SizedBox(height: 16),
+                  const Divider(color: AppColors.borderSubtle, height: 1),
+                  const SizedBox(height: 12),
+                  Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+                    OutlinedButton.icon(
+                      onPressed: () => p.rejectRequest(docId),
+                      icon: const Icon(Icons.close_rounded, size: 16),
+                      label: Text('Rechazar', style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13)),
+                      style: OutlinedButton.styleFrom(foregroundColor: AppColors.error, side: const BorderSide(color: AppColors.error), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)), padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10)),
+                    ),
+                    const SizedBox(width: 12),
+                    ElevatedButton.icon(
+                      onPressed: () => p.approveRequest(docId),
+                      icon: const Icon(Icons.check_rounded, size: 16),
+                      label: Text('Aprobar', style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 13)),
+                      style: ElevatedButton.styleFrom(backgroundColor: AppColors.success, foregroundColor: Colors.white, elevation: 0, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)), padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10)),
+                    ),
+                  ]),
+                ]),
+              );
+            },
+          );
   }
 
-  // Dialog para confirmar eliminación
-  void _showDeleteConfirmDialog(
-      BuildContext context, AdminProvider provider, String uid, String name) {
-    showDialog(
-      context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          title: const Text('Eliminar Empleado',
-              style: TextStyle(fontWeight: FontWeight.bold)),
-          content: Text(
-              '¿Estás seguro de que deseas eliminar a $name? Esta acción no se puede deshacer y el empleado perderá el beneficio corporativo.'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child:
-                  const Text('Cancelar', style: TextStyle(color: Colors.grey)),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                provider.deleteEmployee(uid);
-                Navigator.pop(dialogContext);
-              },
-              style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red, foregroundColor: Colors.white),
-              child: const Text('Eliminar'),
-            ),
-          ],
-        );
-      },
-    );
+  // ── Helpers ──
+  ImageProvider? _getAvatarImageProvider(dynamic url) {
+    if (url == null || url.toString().isEmpty) return null;
+    if (url.toString().startsWith('data:image')) {
+      try { return MemoryImage(base64Decode(url.toString().split(',').last)); } catch (_) { return null; }
+    }
+    return NetworkImage(url.toString());
+  }
+
+  void _handleSnackBars(BuildContext context, AdminProvider provider) {
+    if (provider.state == AdminState.success || provider.state == AdminState.error) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(provider.state == AdminState.success ? 'Cambio guardado exitosamente.' : 'Error: ${provider.errorMessage}'),
+          backgroundColor: provider.state == AdminState.success ? AppColors.success : AppColors.error,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          duration: const Duration(seconds: 2),
+        ));
+        provider.clearState();
+      });
+    }
   }
 }

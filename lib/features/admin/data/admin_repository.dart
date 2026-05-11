@@ -178,8 +178,6 @@ class AdminRepository {
   /// Rechazar solicitud de afiliación corporativa.
   Future<void> rejectRequest(String userId) async {
     try {
-      // NO limpiamos company_id para mantener el historial en la lista.
-      // Solo cambiamos el estado para que la UI lo refleje.
       await _db.from('users').update({
         'estado_solicitud': 'rechazado',
         'is_active': false,
@@ -187,6 +185,58 @@ class AdminRepository {
       }).eq('id', userId);
     } catch (e) {
       throw Exception('Error al rechazar solicitud: $e');
+    }
+  }
+
+  // ─────────────────────────────────────────────
+  // VIAJES CORPORATIVOS (para reportes)
+  // ─────────────────────────────────────────────
+
+  /// Obtener todos los viajes de empleados de una empresa.
+  Future<List<Map<String, dynamic>>> fetchCompanyTrips(String companyId) async {
+    try {
+      final data = await _db
+          .from('trips')
+          .select()
+          .eq('company_id', companyId)
+          .order('created_at', ascending: false);
+      return List<Map<String, dynamic>>.from(data);
+    } catch (e) {
+      debugPrint('[Supabase] Error al obtener viajes corporativos: $e');
+      return [];
+    }
+  }
+
+  /// Obtener viajes completados/finalizados de la empresa.
+  Future<List<Map<String, dynamic>>> fetchCompanyCompletedTrips(String companyId) async {
+    try {
+      final data = await _db
+          .from('trips')
+          .select()
+          .eq('company_id', companyId)
+          .inFilter('status', ['completado', 'finalizado'])
+          .order('created_at', ascending: false);
+      return List<Map<String, dynamic>>.from(data);
+    } catch (e) {
+      debugPrint('[Supabase] Error al obtener viajes completados: $e');
+      return [];
+    }
+  }
+
+  /// Obtener viajes de la última semana agrupables por día.
+  Future<List<Map<String, dynamic>>> fetchWeeklyTrips(String companyId) async {
+    try {
+      final weekAgo = DateTime.now().subtract(const Duration(days: 7)).toIso8601String();
+      final data = await _db
+          .from('trips')
+          .select()
+          .eq('company_id', companyId)
+          .gte('created_at', weekAgo)
+          .order('created_at', ascending: true);
+      return List<Map<String, dynamic>>.from(data);
+    } catch (e) {
+      debugPrint('[Supabase] Error al obtener viajes semanales: $e');
+      return [];
     }
   }
 

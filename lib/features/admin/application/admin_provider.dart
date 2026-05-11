@@ -185,6 +185,79 @@ class AdminProvider extends ChangeNotifier {
       .length;
 
   // ─────────────────────────────────────────────
+  // VIAJES CORPORATIVOS (Reportes)
+  // ─────────────────────────────────────────────
+
+  List<Map<String, dynamic>> _companyTrips = [];
+  List<Map<String, dynamic>> get companyTrips => _companyTrips;
+
+  List<Map<String, dynamic>> _weeklyTrips = [];
+  List<Map<String, dynamic>> get weeklyTrips => _weeklyTrips;
+
+  bool _tripsLoaded = false;
+  bool get tripsLoaded => _tripsLoaded;
+
+  String? get currentCompanyId => _currentCompanyId;
+
+  Future<void> loadCompanyTrips() async {
+    if (_currentCompanyId == null) return;
+    try {
+      _companyTrips = await _repository.fetchCompanyTrips(_currentCompanyId!);
+      _weeklyTrips = await _repository.fetchWeeklyTrips(_currentCompanyId!);
+      _tripsLoaded = true;
+      notifyListeners();
+    } catch (e) {
+      debugPrint('[AdminProvider] Error cargando viajes: $e');
+    }
+  }
+
+  double get totalSpent {
+    double total = 0;
+    for (final t in _companyTrips) {
+      total += (t['cost'] as num?)?.toDouble() ?? 0;
+    }
+    return total;
+  }
+
+  int get completedTripsCount => _companyTrips
+      .where((t) => t['status'] == 'completado' || t['status'] == 'finalizado')
+      .length;
+
+  Map<String, int> get tripsPerDay {
+    final Map<String, int> result = {};
+    final days = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+    for (final t in _weeklyTrips) {
+      final created = t['created_at'] as String?;
+      if (created != null) {
+        try {
+          final dt = DateTime.parse(created).toLocal();
+          final dayName = days[dt.weekday - 1];
+          result[dayName] = (result[dayName] ?? 0) + 1;
+        } catch (_) {}
+      }
+    }
+    return result;
+  }
+
+  Map<String, double> get spendPerEmployee {
+    final Map<String, double> result = {};
+    for (final t in _companyTrips) {
+      final userId = t['user_id'] as String? ?? 'desconocido';
+      final cost = (t['cost'] as num?)?.toDouble() ?? 0;
+      result[userId] = (result[userId] ?? 0) + cost;
+    }
+    return result;
+  }
+
+  String getEmployeeName(String userId) {
+    final emp = _employees.where((e) => e['id'] == userId).toList();
+    if (emp.isNotEmpty) {
+      return emp.first['display_name'] ?? emp.first['name'] ?? emp.first['email'] ?? 'Empleado';
+    }
+    return 'Empleado';
+  }
+
+  // ─────────────────────────────────────────────
   // ESTADO
   // ─────────────────────────────────────────────
 
