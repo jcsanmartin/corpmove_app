@@ -262,4 +262,23 @@ class TripSupabaseRepository {
       return [];
     }
   }
+
+  // ──────────────────────────────────────────────
+  //  PASSENGER — Historial de viajes del pasajero
+  // ──────────────────────────────────────────────
+
+  /// Obtiene todos los viajes de un pasajero (por su UUID de Supabase).
+  Future<List<Map<String, dynamic>>> fetchPassengerTrips(String passengerSupabaseId) async {
+    try {
+      final data = await _client
+          .from('trips')
+          .select()
+          .eq('user_id', passengerSupabaseId)
+          .order('created_at', ascending: false);
+      return List<Map<String, dynamic>>.from(data);
+    } catch (e) {
+      debugPrint('Error obteniendo historial de pasajero: $e');
+      return [];
+    }
+  }
 }

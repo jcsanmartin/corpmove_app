@@ -1283,33 +1283,181 @@ class _PassengerHomeScreenState extends State<PassengerHomeScreen> {
   }
 }
 
-class _HistoryTab extends StatelessWidget {
+class _HistoryTab extends StatefulWidget {
   const _HistoryTab();
+
+  @override
+  State<_HistoryTab> createState() => _HistoryTabState();
+}
+
+class _HistoryTabState extends State<_HistoryTab> {
+  final TripSupabaseRepository _tripRepo = TripSupabaseRepository();
+  List<Map<String, dynamic>>? _trips;
+  bool _isLoading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTrips();
+  }
+
+  Future<void> _loadTrips() async {
+    setState(() { _isLoading = true; _error = null; });
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        setState(() { _error = 'No hay usuario autenticado'; _isLoading = false; });
+        return;
+      }
+      final supabaseId = await _tripRepo.getSupabaseUserId(user.uid);
+      if (supabaseId == null) {
+        setState(() { _error = 'Usuario no encontrado'; _isLoading = false; });
+        return;
+      }
+      final trips = await _tripRepo.fetchPassengerTrips(supabaseId);
+      if (mounted) setState(() { _trips = trips; _isLoading = false; });
+    } catch (e) {
+      if (mounted) setState(() { _error = e.toString(); _isLoading = false; });
+    }
+  }
+
+  Color _statusColor(String s) {
+    switch (s) {
+      case 'completado': case 'finalizado': return const Color(0xFF4CAF50);
+      case 'cancelado': return const Color(0xFFE53935);
+      case 'en_progreso': case 'en_camino': case 'recogido': return const Color(0xFF2196F3);
+      case 'buscando': return const Color(0xFFFF9800);
+      default: return const Color(0xFF9E9E9E);
+    }
+  }
+
+  String _statusLabel(String s) {
+    switch (s) {
+      case 'completado': return 'Completado';
+      case 'finalizado': return 'Finalizado';
+      case 'cancelado': return 'Cancelado';
+      case 'en_progreso': return 'En progreso';
+      case 'en_camino': return 'En camino';
+      case 'recogido': return 'Recogido';
+      case 'buscando': return 'Buscando';
+      default: return s;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.history_rounded, size: 64, color: AppColors.textMuted),
-          const SizedBox(height: 16),
-          Text(
-            'Historial de viajes',
-            style: GoogleFonts.inter(
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          Text(
-            'Próximamente...',
-            style: GoogleFonts.inter(color: AppColors.textMuted),
-          ),
-        ],
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator(color: AppColors.accentLime));
+    }
+    if (_error != null) {
+      return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+        const Icon(Icons.error_outline_rounded, size: 56, color: AppColors.textMuted),
+        const SizedBox(height: 16),
+        Text(_error!, style: GoogleFonts.inter(color: AppColors.textMuted, fontSize: 13)),
+        const SizedBox(height: 16),
+        ElevatedButton.icon(onPressed: _loadTrips, icon: const Icon(Icons.refresh_rounded), label: const Text('Reintentar'),
+          style: ElevatedButton.styleFrom(backgroundColor: AppColors.accentLime, foregroundColor: Colors.white)),
+      ]));
+    }
+    if (_trips == null || _trips!.isEmpty) {
+      return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+        const Icon(Icons.directions_car_outlined, size: 64, color: AppColors.textMuted),
+        const SizedBox(height: 16),
+        Text('Sin viajes aún', style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+        const SizedBox(height: 8),
+        Text('Tus viajes aparecerán aquí', style: GoogleFonts.inter(color: AppColors.textMuted)),
+      ]));
+    }
+
+    return RefreshIndicator(
+      onRefresh: _loadTrips, color: AppColors.accentLime,
+      child: ListView.builder(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+        itemCount: _trips!.length + 1,
+        itemBuilder: (context, index) {
+          if (index == 0) {
+            return Padding(padding: const EdgeInsets.only(bottom: 16), child: Row(children: [
+              const Icon(Icons.history_rounded, color: AppColors.accentLime, size: 22),
+              const SizedBox(width: 10),
+              Text('Historial de Viajes', style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+              const Spacer(),
+              Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(color: AppColors.accentLime.withOpacity(0.12), borderRadius: BorderRadius.circular(12)),
+                child: Text('${_trips!.length}', style: GoogleFonts.inter(color: AppColors.accentLime, fontSize: 12, fontWeight: FontWeight.w700))),
+            ]));
+          }
+          final t = _trips![index - 1];
+          final origin = t['origin_text'] as String? ?? 'Origen';
+          final dest = t['destination_text'] as String? ?? 'Destino';
+          final cost = (t['cost'] as num?)?.toDouble() ?? 0;
+          final status = t['status'] as String? ?? '';
+          final createdAt = t['created_at'] as String?;
+          final isB2b = t['company_id'] != null;
+          String dateStr = '';
+          String timeStr = '';
+          if (createdAt != null) {
+            try {
+              final dt = DateTime.parse(createdAt).toLocal();
+              dateStr = '${dt.day}/${dt.month}/${dt.year}';
+              timeStr = '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+            } catch (_) {}
+          }
+          final sColor = _statusColor(status);
+          final done = status == 'completado' || status == 'finalizado';
+
+          return Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            decoration: BoxDecoration(color: AppColors.cardLight, borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppColors.borderSubtle),
+              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2))]),
+            child: Padding(padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                Icon(Icons.calendar_today_rounded, size: 14, color: AppColors.textMuted),
+                const SizedBox(width: 6),
+                Text('$dateStr  $timeStr', style: GoogleFonts.inter(fontSize: 12, color: AppColors.textMuted)),
+                const Spacer(),
+                Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(color: sColor.withOpacity(0.12), borderRadius: BorderRadius.circular(8)),
+                  child: Text(_statusLabel(status), style: GoogleFonts.inter(color: sColor, fontSize: 10, fontWeight: FontWeight.w700))),
+                if (isB2b) ...[
+                  const SizedBox(width: 6),
+                  Container(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                    decoration: BoxDecoration(color: const Color(0xFF1A237E).withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+                    child: Text('Corp', style: GoogleFonts.inter(color: const Color(0xFF1A237E), fontSize: 10, fontWeight: FontWeight.w700))),
+                ],
+              ]),
+              const SizedBox(height: 12),
+              Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Column(children: [
+                  Container(width: 10, height: 10, decoration: const BoxDecoration(color: AppColors.accentLime, shape: BoxShape.circle)),
+                  Container(width: 2, height: 24, color: AppColors.borderSubtle),
+                  Container(width: 10, height: 10, decoration: BoxDecoration(color: done ? const Color(0xFF4CAF50) : AppColors.textMuted, borderRadius: BorderRadius.circular(2))),
+                ]),
+                const SizedBox(width: 12),
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(origin, style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary, fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis),
+                  const SizedBox(height: 14),
+                  Text(dest, style: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary, fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis),
+                ])),
+              ]),
+              const SizedBox(height: 12),
+              Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(color: AppColors.scaffoldLight, borderRadius: BorderRadius.circular(10)),
+                child: Row(children: [
+                  const Icon(Icons.payments_rounded, size: 16, color: AppColors.accentLime),
+                  const SizedBox(width: 8),
+                  Text('Tarifa: ', style: GoogleFonts.inter(fontSize: 12, color: AppColors.textMuted)),
+                  Text('\$${cost.toStringAsFixed(0)}', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.accentLime)),
+                ])),
+            ])),
+          );
+        },
       ),
     );
   }
 }
+
 
 // ----------------------------------------------------
 // BOTTOM SHEET PARA BUSCAR DIRECCIÓN CON MAPBOX GEOCODING
