@@ -6,9 +6,49 @@ import 'package:corpmove_app/features/owner/presentation/screens/manage_company_
 import 'package:corpmove_app/features/owner/presentation/screens/manage_users_screen.dart';
 import 'package:corpmove_app/features/owner/presentation/screens/manage_drivers_screen.dart';
 import 'package:corpmove_app/features/owner/presentation/screens/role_assignment_screen.dart';
+import 'package:corpmove_app/features/owner/data/repositories/owner_supabase_repository.dart';
 
-class OwnerDashboardScreen extends StatelessWidget {
+class OwnerDashboardScreen extends StatefulWidget {
   const OwnerDashboardScreen({super.key});
+
+  @override
+  State<OwnerDashboardScreen> createState() => _OwnerDashboardScreenState();
+}
+
+class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
+  final OwnerSupabaseRepository _repo = OwnerSupabaseRepository();
+  Map<String, int> _stats = {'companies': 0, 'users': 0, 'drivers': 0};
+  bool _isLoading = true;
+  List<Map<String, dynamic>> _recentCompanies = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDashboardData();
+  }
+
+  Future<void> _loadDashboardData() async {
+    setState(() => _isLoading = true);
+    try {
+      final stats = await _repo.getDashboardStats();
+      // Obtener últimas 3 empresas como ejemplo
+      final companiesList = await _repo.streamCompanies().first;
+      final recent = companiesList.take(3).toList();
+
+      if (mounted) {
+        setState(() {
+          _stats = stats;
+          _recentCompanies = recent;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading dashboard: $e');
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -46,159 +86,128 @@ class OwnerDashboardScreen extends StatelessWidget {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.notifications_outlined),
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Notificaciones globales')),
-              );
-            },
+            icon: const Icon(Icons.refresh_rounded),
+            onPressed: _loadDashboardData,
           ),
         ],
       ),
       drawer: _buildDrawer(context),
-      body: ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
-          Container(
-            decoration: AppDecorations.cardElevated,
-            child: Padding(
+      body: _isLoading 
+        ? const Center(child: CircularProgressIndicator(color: AppColors.accentLime))
+        : RefreshIndicator(
+            onRefresh: _loadDashboardData,
+            color: AppColors.accentLime,
+            child: ListView(
               padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Métricas Globales',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              children: [
+                Container(
+                  decoration: AppDecorations.cardElevated,
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Métricas Globales',
+                          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 20),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceAround,
+                          children: [
+                            _buildMetric('Empresas', '${_stats['companies']}'),
+                            _buildMetric('Usuarios', '${_stats['users']}'),
+                            _buildMetric('Conductores', '${_stats['drivers']}'),
+                            _buildMetric('Viajes Hoy', '--'), // Próximamente si se asocia tabla trips
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 20),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      _buildMetric('Empresas', '12'),
-                      _buildMetric('Usuarios', '1,250'),
-                      _buildMetric('Conductores', '85'),
-                      _buildMetric('Viajes Hoy', '342'),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 24),
+                ),
+                const SizedBox(height: 24),
 
-          // --- Tarjetas de Navegación ---
-          Text(
-            'Gestión Rápida',
-            style: GoogleFonts.inter(
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 14),
-          GridView.count(
-            crossAxisCount: 2,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            mainAxisSpacing: 14,
-            crossAxisSpacing: 14,
-            childAspectRatio: 1.05,
-            children: [
-              _buildNavCard(
-                context,
-                icon: Icons.business_rounded,
-                label: 'Empresas',
-                subtitle: 'Convenios corporativos',
-                color: const Color(0xFF4ECDC4),
-                destination: const ManageCompanyScreen(),
-              ),
-              _buildNavCard(
-                context,
-                icon: Icons.directions_car_filled_rounded,
-                label: 'Conductores',
-                subtitle: 'Gestión de conductores',
-                color: const Color(0xFFFF6B6B),
-                destination: const ManageDriversScreen(),
-              ),
-              _buildNavCard(
-                context,
-                icon: Icons.people_rounded,
-                label: 'Usuarios',
-                subtitle: 'Normales y corporativos',
-                color: AppColors.info,
-                destination: const ManageUsersScreen(),
-              ),
-              _buildNavCard(
-                context,
-                icon: Icons.admin_panel_settings_rounded,
-                label: 'Roles',
-                subtitle: 'Asignación de roles',
-                color: AppColors.accentLime,
-                destination: const RoleAssignmentScreen(),
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
+                // --- Tarjetas de Navegación ---
+                Text(
+                  'Gestión Rápida',
+                  style: GoogleFonts.inter(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                GridView.count(
+                  crossAxisCount: 2,
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  mainAxisSpacing: 14,
+                  crossAxisSpacing: 14,
+                  childAspectRatio: 1.05,
+                  children: [
+                    _buildNavCard(
+                      context,
+                      icon: Icons.business_rounded,
+                      label: 'Empresas',
+                      subtitle: 'Convenios corporativos',
+                      color: const Color(0xFF4ECDC4),
+                      destination: const ManageCompanyScreen(),
+                    ),
+                    _buildNavCard(
+                      context,
+                      icon: Icons.directions_car_filled_rounded,
+                      label: 'Conductores',
+                      subtitle: 'Gestión de conductores',
+                      color: const Color(0xFFFF6B6B),
+                      destination: const ManageDriversScreen(),
+                    ),
+                    _buildNavCard(
+                      context,
+                      icon: Icons.people_rounded,
+                      label: 'Usuarios',
+                      subtitle: 'Normales y corporativos',
+                      color: AppColors.info,
+                      destination: const ManageUsersScreen(),
+                    ),
+                    _buildNavCard(
+                      context,
+                      icon: Icons.monetization_on_rounded,
+                      label: 'Ganancias',
+                      subtitle: 'Próximamente',
+                      color: AppColors.warning,
+                      isComingSoon: true,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
 
-          // --- Empresas Afiliadas ---
-          Container(
-            decoration: AppDecorations.cardElevated,
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Empresas Afiliadas',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                // --- Empresas Afiliadas ---
+                Container(
+                  decoration: AppDecorations.cardElevated,
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Últimas Empresas Registradas',
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 10),
+                        if (_recentCompanies.isEmpty)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 20),
+                            child: Center(child: Text('No hay empresas aún', style: GoogleFonts.inter(color: AppColors.textMuted))),
+                          )
+                        else
+                          ..._recentCompanies.map((c) => _buildCompanyTile(context, c)),
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 10),
-                  _buildCompanyTile(
-                      context, 'CorpMove S.A.', 'admin@corpmove.com', true),
-                  _buildCompanyTile(
-                      context, 'Tech Solutions', 'admin@tech.com', true),
-                  _buildCompanyTile(
-                      context, 'Logística Express', 'admin@logex.com', false),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 20),
-          Container(
-            decoration: AppDecorations.cardElevated,
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Configuración Global',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 10),
-                  SwitchListTile(
-                    title: const Text('Modo mantenimiento'),
-                    value: false,
-                    onChanged: (_) {},
-                    activeThumbColor: AppColors.accentLime,
-                  ),
-                  SwitchListTile(
-                    title: const Text('Habilitar registro público'),
-                    value: true,
-                    onChanged: (_) {},
-                    activeThumbColor: AppColors.accentLime,
-                  ),
-                  ListTile(
-                    title: const Text('Comisión por viaje'),
-                    trailing: const Text('10%'),
-                    onTap: () {},
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -209,7 +218,8 @@ class OwnerDashboardScreen extends StatelessWidget {
     required String label,
     required String subtitle,
     required Color color,
-    required Widget destination,
+    Widget? destination,
+    bool isComingSoon = false,
   }) {
     return Container(
       decoration: BoxDecoration(
@@ -222,11 +232,13 @@ class OwnerDashboardScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         child: InkWell(
           borderRadius: BorderRadius.circular(20),
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => destination),
-            );
+          onTap: isComingSoon ? null : () {
+            if (destination != null) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => destination),
+              ).then((_) => _loadDashboardData()); // Refrescar al volver
+            }
           },
           child: Padding(
             padding: const EdgeInsets.all(18),
@@ -256,7 +268,8 @@ class OwnerDashboardScreen extends StatelessWidget {
                   subtitle,
                   style: GoogleFonts.inter(
                     fontSize: 12,
-                    color: AppColors.textMuted,
+                    color: isComingSoon ? AppColors.warning : AppColors.textMuted,
+                    fontWeight: isComingSoon ? FontWeight.bold : FontWeight.normal,
                   ),
                 ),
               ],
@@ -322,7 +335,7 @@ class OwnerDashboardScreen extends StatelessWidget {
             onTap: () {
               Navigator.pop(context);
               Navigator.push(context,
-                  MaterialPageRoute(builder: (_) => const ManageCompanyScreen()));
+                  MaterialPageRoute(builder: (_) => const ManageCompanyScreen())).then((_) => _loadDashboardData());
             },
           ),
           ListTile(
@@ -331,7 +344,7 @@ class OwnerDashboardScreen extends StatelessWidget {
             onTap: () {
               Navigator.pop(context);
               Navigator.push(context,
-                  MaterialPageRoute(builder: (_) => const ManageDriversScreen()));
+                  MaterialPageRoute(builder: (_) => const ManageDriversScreen())).then((_) => _loadDashboardData());
             },
           ),
           ListTile(
@@ -340,7 +353,7 @@ class OwnerDashboardScreen extends StatelessWidget {
             onTap: () {
               Navigator.pop(context);
               Navigator.push(context,
-                  MaterialPageRoute(builder: (_) => const ManageUsersScreen()));
+                  MaterialPageRoute(builder: (_) => const ManageUsersScreen())).then((_) => _loadDashboardData());
             },
           ),
           ListTile(
@@ -350,16 +363,6 @@ class OwnerDashboardScreen extends StatelessWidget {
               Navigator.pop(context);
               Navigator.push(context,
                   MaterialPageRoute(builder: (_) => const RoleAssignmentScreen()));
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.settings),
-            title: const Text('Configuración global'),
-            onTap: () {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Configuración de la plataforma')),
-              );
             },
           ),
           const Divider(),
@@ -393,36 +396,30 @@ class OwnerDashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildCompanyTile(
-      BuildContext context, String name, String email, bool active) {
+  Widget _buildCompanyTile(BuildContext context, Map<String, dynamic> c) {
     return ListTile(
       leading: CircleAvatar(
-        backgroundColor: active
-            ? AppColors.success.withOpacity(0.1)
-            : AppColors.borderSubtle,
-        child: Icon(Icons.business,
-            color: active ? AppColors.success : AppColors.textMuted),
+        backgroundColor: AppColors.success.withOpacity(0.1),
+        child: const Icon(Icons.business, color: AppColors.success),
       ),
       title: Text(
-        name,
+        c['company_name'] ?? 'Sin nombre',
         style: GoogleFonts.inter(
             fontWeight: FontWeight.w600, color: AppColors.textPrimary),
       ),
       subtitle: Text(
-        email,
+        'Límite: \$${c['corporate_limit'] ?? 0}',
         style: GoogleFonts.inter(color: AppColors.textMuted),
       ),
       trailing: const Icon(Icons.chevron_right, color: AppColors.textMuted),
-
-      // ESTO ES LO QUE HACE QUE EL CLIC FUNCIONE:
       onTap: () {
         Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => PartnerDetailsScreen(
-              partnerName: name,
-              partnerEmail: email,
-              initialStatus: active,
+              partnerName: c['company_name'] ?? 'Sin nombre',
+              partnerEmail: 'N/A',
+              initialStatus: true,
             ),
           ),
         );
