@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:ui' as ui;
+import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:corpmove_app/core/theme/app_theme.dart';
@@ -106,6 +108,11 @@ class _WaitingDriverScreenState extends State<WaitingDriverScreen>
             _driverName = driverNameStr;
           });
         }
+      } else if (status == 'en_curso') {
+        // Conductor llegó al punto de recogida → quitar el carro del mapa
+        _driverLocationSub?.cancel();
+        _driverLocationSub = null;
+        await _removeDriverMarker();
       } else if (status == 'cancelado') {
         if (mounted) {
           Navigator.pop(context);
@@ -131,33 +138,115 @@ class _WaitingDriverScreenState extends State<WaitingDriverScreen>
     });
   }
 
+  bool _carImageAdded = false;
+
+  Future<void> _addCarImage() async {
+    if (_mapController == null || _carImageAdded) return;
+    try {
+      // Load the PNG asset
+      final byteData = await rootBundle.load('assets/images/carro_mapa.png');
+      final pngBytes = byteData.buffer.asUint8List();
+      
+      // Decode PNG to raw RGBA pixel data
+      final codec = await ui.instantiateImageCodec(
+        pngBytes,
+        targetWidth: 96,
+        targetHeight: 96,
+      );
+      final frame = await codec.getNextFrame();
+      final image = frame.image;
+      final rgbaData = await image.toByteData(format: ui.ImageByteFormat.rawRgba);
+      
+      if (rgbaData == null) {
+        debugPrint('Failed to decode car image to RGBA');
+        return;
+      }
+      
+      await _mapController!.style.addStyleImage(
+        'car-icon',
+        2.0, // pixel ratio for retina
+        mbx.MbxImage(
+          width: image.width,
+          height: image.height,
+          data: rgbaData.buffer.asUint8List(),
+        ),
+        false,
+        [],
+        [],
+        null,
+      );
+      _carImageAdded = true;
+    } catch (e) {
+      debugPrint('Error adding car image: $e');
+    }
+  }
+
+
   Future<void> _updateDriverMarkerOnMap(double lat, double lng) async {
     if (_mapController == null) return;
-    
-    final feature = {
+
+    await _addCarImage();
+
+    final geojsonString = jsonEncode({
       "type": "Feature",
       "geometry": {
         "type": "Point",
         "coordinates": [lng, lat]
       },
       "properties": {}
-    };
-    final geojsonString = jsonEncode(feature);
+    });
 
-    if (await _mapController!.style.styleSourceExists("driver-source") == true) {
-      await _mapController!.style.removeStyleLayer("driver-layer");
-      await _mapController!.style.removeStyleSource("driver-source");
+    try {
+      // Remove old source (and layer if needed)
+      if (await _mapController!.style.styleSourceExists("driver-source") == true) {
+        if (await _mapController!.style.styleLayerExists("driver-layer") == true) {
+          await _mapController!.style.removeStyleLayer("driver-layer");
+        }
+        await _mapController!.style.removeStyleSource("driver-source");
+      }
+
+      // Re-add source with updated position
+      await _mapController!.style.addSource(
+        mbx.GeoJsonSource(id: "driver-source", data: geojsonString),
+      );
+
+      // Re-add layer
+      if (_carImageAdded) {
+        await _mapController!.style.addLayer(mbx.SymbolLayer(
+          id: "driver-layer",
+          sourceId: "driver-source",
+          iconImage: 'car-icon',
+          iconSize: 0.6,
+          iconAllowOverlap: true,
+          iconIgnorePlacement: true,
+        ));
+      } else {
+        await _mapController!.style.addLayer(mbx.CircleLayer(
+          id: "driver-layer",
+          sourceId: "driver-source",
+          circleRadius: 10.0,
+          circleColor: Colors.deepPurpleAccent.value,
+          circleStrokeColor: Colors.white.value,
+          circleStrokeWidth: 3.0,
+        ));
+      }
+    } catch (e) {
+      debugPrint('Error updating driver marker: $e');
     }
+  }
 
-    await _mapController!.style.addSource(mbx.GeoJsonSource(id: "driver-source", data: geojsonString));
-    await _mapController!.style.addLayer(mbx.CircleLayer(
-      id: "driver-layer",
-      sourceId: "driver-source",
-      circleRadius: 10.0,
-      circleColor: Colors.deepPurpleAccent.value,
-      circleStrokeColor: Colors.white.value,
-      circleStrokeWidth: 3.0,
-    ));
+  Future<void> _removeDriverMarker() async {
+    if (_mapController == null) return;
+    try {
+      if (await _mapController!.style.styleLayerExists("driver-layer") == true) {
+        await _mapController!.style.removeStyleLayer("driver-layer");
+      }
+      if (await _mapController!.style.styleSourceExists("driver-source") == true) {
+        await _mapController!.style.removeStyleSource("driver-source");
+      }
+    } catch (e) {
+      debugPrint('Error removing driver marker: $e');
+    }
   }
   
   void _showRatingDialog() {
