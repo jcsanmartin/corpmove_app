@@ -72,6 +72,8 @@ class _ActiveTripScreenState extends State<ActiveTripScreen> {
     _startLocationStream();
   }
 
+  bool _initialRouteDrawn = false;
+
   void _startLocationStream() {
     _positionStream = Geolocator.getPositionStream(
       locationSettings: const LocationSettings(accuracy: LocationAccuracy.high, distanceFilter: 10),
@@ -79,6 +81,11 @@ class _ActiveTripScreenState extends State<ActiveTripScreen> {
       final pos = mbx.Position(position.longitude, position.latitude);
       _currentPosition = pos;
       _updateDriverMarker(pos);
+
+      if (!_initialRouteDrawn && _mapController != null && _currentPhase == 'searching_passenger') {
+        _initialRouteDrawn = true;
+        _drawRoute(pos, mbx.Position(_pickupLng, _pickupLat));
+      }
     });
   }
 
@@ -96,20 +103,19 @@ class _ActiveTripScreenState extends State<ActiveTripScreen> {
       pulsingEnabled: true,
     ));
 
-    if (_currentPosition != null) {
+    if (_currentPosition != null && !_initialRouteDrawn && _currentPhase == 'searching_passenger') {
+      _initialRouteDrawn = true;
       _mapController?.setCamera(mbx.CameraOptions(
         center: mbx.Point(coordinates: _currentPosition!),
         zoom: 15.0,
       ));
-      await _drawRouteToDestination(mbx.Position(_pickupLng, _pickupLat));
+      await _drawRoute(_currentPosition!, mbx.Position(_pickupLng, _pickupLat));
     }
   }
 
-  Future<void> _drawRouteToDestination(mbx.Position destination) async {
-    if (_currentPosition == null) return;
-
-    final originLon = _currentPosition!.lng;
-    final originLat = _currentPosition!.lat;
+  Future<void> _drawRoute(mbx.Position origin, mbx.Position destination) async {
+    final originLon = origin.lng;
+    final originLat = origin.lat;
     final destLon = destination.lng;
     final destLat = destination.lat;
 
@@ -226,7 +232,10 @@ class _ActiveTripScreenState extends State<ActiveTripScreen> {
     if (_currentPhase == 'searching_passenger') {
       setState(() => _currentPhase = 'en_curso');
       await _updateTripStatus('en_curso');
-      await _drawRouteToDestination(mbx.Position(_dropoffLng, _dropoffLat));
+      await _drawRoute(
+        mbx.Position(_pickupLng, _pickupLat), 
+        mbx.Position(_dropoffLng, _dropoffLat)
+      );
     } else if (_currentPhase == 'en_curso') {
       setState(() => _currentPhase = 'finalizado');
       await _updateTripStatus('finalizado');
