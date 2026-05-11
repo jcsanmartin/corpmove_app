@@ -242,4 +242,24 @@ class TripSupabaseRepository {
         .stream(primaryKey: ['id'])
         .eq('is_active', true);
   }
+
+  // ──────────────────────────────────────────────
+  //  DRIVER — Historial de viajes completados
+  // ──────────────────────────────────────────────
+
+  /// Obtiene los viajes finalizados/completados de un conductor (por su UUID de Supabase).
+  Future<List<Map<String, dynamic>>> fetchDriverCompletedTrips(String driverSupabaseId) async {
+    try {
+      final data = await _client
+          .from('trips')
+          .select()
+          .eq('driver_id', driverSupabaseId)
+          .inFilter('status', ['completado', 'finalizado'])
+          .order('created_at', ascending: false);
+      return List<Map<String, dynamic>>.from(data);
+    } catch (e) {
+      debugPrint('Error obteniendo historial de viajes: $e');
+      return [];
+    }
+  }
 }

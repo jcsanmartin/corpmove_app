@@ -180,11 +180,11 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
         ],
       ),
       drawer: _buildDrawer(context),
-      body: _selectedIndex == 0 ? _buildTripsTab() : _buildEarningsTab(),
+      body: _getBody(),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         onTap: (index) {
-          if (index == 2) {
+          if (index == 3) {
             Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const DriverProfileScreen()),
@@ -193,16 +193,27 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
             setState(() => _selectedIndex = index);
           }
         },
+        type: BottomNavigationBarType.fixed,
         selectedItemColor: AppColors.accentLime,
         unselectedItemColor: AppColors.textMuted,
         backgroundColor: AppColors.surfaceLight,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.directions_car_rounded), label: 'Viajes'),
           BottomNavigationBarItem(icon: Icon(Icons.account_balance_wallet_rounded), label: 'Ganancias'),
+          BottomNavigationBarItem(icon: Icon(Icons.history_rounded), label: 'Historial'),
           BottomNavigationBarItem(icon: Icon(Icons.person_rounded), label: 'Perfil'),
         ],
       ),
     );
+  }
+
+  Widget _getBody() {
+    switch (_selectedIndex) {
+      case 0: return _buildTripsTab();
+      case 1: return _buildEarningsTab();
+      case 2: return _buildHistoryTab();
+      default: return _buildTripsTab();
+    }
   }
 
   Widget _buildDrawer(BuildContext context) {
@@ -490,6 +501,162 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
         const SizedBox(height: 4),
         Text('\$$amount', style: GoogleFonts.inter(color: color, fontWeight: FontWeight.bold)),
       ],
+    );
+  }
+
+  // ──── Tab de Historial ────
+
+  Widget _buildHistoryTab() {
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: _loadCompletedTrips(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator(color: AppColors.accentLime));
+        }
+
+        if (snapshot.hasError) {
+          return Center(
+            child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+              const Icon(Icons.error_outline_rounded, size: 56, color: AppColors.error),
+              const SizedBox(height: 16),
+              Text('Error al cargar historial', style: GoogleFonts.inter(color: AppColors.textPrimary, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 8),
+              Text('${snapshot.error}', style: GoogleFonts.inter(color: AppColors.textMuted, fontSize: 12), textAlign: TextAlign.center),
+            ]),
+          );
+        }
+
+        final trips = snapshot.data ?? [];
+
+        if (trips.isEmpty) {
+          return Center(
+            child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+              Container(
+                width: 80, height: 80,
+                decoration: BoxDecoration(color: AppColors.cardElevated, shape: BoxShape.circle, border: Border.all(color: AppColors.borderSubtle)),
+                child: const Icon(Icons.history_rounded, size: 40, color: AppColors.textMuted),
+              ),
+              const SizedBox(height: 20),
+              Text('Sin viajes completados', style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+              const SizedBox(height: 8),
+              Text('Tus viajes finalizados aparecerán aquí', style: GoogleFonts.inter(color: AppColors.textMuted, fontSize: 14)),
+            ]),
+          );
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Row(children: [
+                const Icon(Icons.history_rounded, color: AppColors.accentLime, size: 22),
+                const SizedBox(width: 8),
+                Text('Historial de Viajes', style: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(color: AppColors.info.withOpacity(0.15), borderRadius: BorderRadius.circular(20)),
+                  child: Text('${trips.length} viajes', style: GoogleFonts.inter(color: AppColors.info, fontWeight: FontWeight.w700, fontSize: 12)),
+                ),
+              ]),
+            ),
+            const Divider(color: AppColors.borderSubtle, height: 1),
+            Expanded(
+              child: RefreshIndicator(
+                onRefresh: () async { setState(() {}); },
+                color: AppColors.accentLime,
+                child: ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: trips.length,
+                  itemBuilder: (context, index) {
+                    final trip = trips[index];
+                    return _buildHistoryCard(trip);
+                  },
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> _loadCompletedTrips() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return [];
+    final supabaseId = await _tripRepo.getSupabaseUserId(user.uid);
+    if (supabaseId == null) return [];
+    return _tripRepo.fetchDriverCompletedTrips(supabaseId);
+  }
+
+  Widget _buildHistoryCard(Map<String, dynamic> trip) {
+    final origin = trip['origin_text'] as String? ?? 'Origen desconocido';
+    final dest = trip['destination_text'] as String? ?? 'Destino desconocido';
+    final cost = (trip['cost'] as num?)?.toDouble() ?? 0;
+    final status = trip['status'] as String? ?? 'completado';
+    final createdAt = trip['created_at'] as String?;
+    final isCorporate = trip['company_id'] != null;
+
+    String dateLabel = '';
+    if (createdAt != null) {
+      try {
+        final dt = DateTime.parse(createdAt).toLocal();
+        dateLabel = '${dt.day}/${dt.month}/${dt.year} - ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+      } catch (_) {}
+    }
+
+    return Container(
+      decoration: AppDecorations.card,
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          // Header: fecha + badge
+          Row(children: [
+            const Icon(Icons.calendar_today_rounded, size: 14, color: AppColors.textMuted),
+            const SizedBox(width: 6),
+            Expanded(child: Text(dateLabel, style: GoogleFonts.inter(fontSize: 12, color: AppColors.textMuted))),
+            if (isCorporate)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(color: AppColors.warning.withOpacity(0.1), borderRadius: BorderRadius.circular(10), border: Border.all(color: AppColors.warning.withOpacity(0.3))),
+                child: Text('B2B', style: GoogleFonts.inter(color: AppColors.warning, fontSize: 10, fontWeight: FontWeight.w700)),
+              ),
+            const SizedBox(width: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(color: AppColors.success.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+              child: Text(status == 'finalizado' ? 'Finalizado' : 'Completado', style: GoogleFonts.inter(color: AppColors.success, fontSize: 10, fontWeight: FontWeight.w700)),
+            ),
+          ]),
+          const SizedBox(height: 12),
+          // Origen
+          Row(children: [
+            Container(width: 10, height: 10, decoration: const BoxDecoration(color: AppColors.success, shape: BoxShape.circle)),
+            const SizedBox(width: 10),
+            Expanded(child: Text(origin, style: GoogleFonts.inter(color: AppColors.textSecondary, fontSize: 13), maxLines: 1, overflow: TextOverflow.ellipsis)),
+          ]),
+          Padding(
+            padding: const EdgeInsets.only(left: 4),
+            child: Column(children: List.generate(3, (_) => Container(width: 2, height: 4, margin: const EdgeInsets.symmetric(vertical: 1), color: AppColors.borderAccent))),
+          ),
+          // Destino
+          Row(children: [
+            Container(width: 10, height: 10, decoration: const BoxDecoration(color: AppColors.error, shape: BoxShape.circle)),
+            const SizedBox(width: 10),
+            Expanded(child: Text(dest, style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: AppColors.textPrimary, fontSize: 13), maxLines: 2, overflow: TextOverflow.ellipsis)),
+          ]),
+          const SizedBox(height: 12),
+          const Divider(color: AppColors.borderSubtle, height: 1),
+          const SizedBox(height: 10),
+          // Tarifa
+          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+            Text('Tarifa cobrada', style: GoogleFonts.inter(color: AppColors.textMuted, fontSize: 12)),
+            Text('\$${cost.toStringAsFixed(0)}', style: GoogleFonts.inter(fontWeight: FontWeight.w800, color: AppColors.accentLime, fontSize: 18)),
+          ]),
+        ]),
+      ),
     );
   }
 
