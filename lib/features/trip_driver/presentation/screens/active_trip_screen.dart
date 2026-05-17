@@ -38,6 +38,11 @@ class _ActiveTripScreenState extends State<ActiveTripScreen> {
   late double _dropoffLat;
   late double _dropoffLng;
 
+  // ── Tracking del pasajero en tiempo real ──
+  final TripSupabaseRepository _tripRepo = TripSupabaseRepository();
+  StreamSubscription<Map<String, dynamic>>? _passengerLocationSub;
+  bool _passengerSourceAdded = false;
+
   @override
   void initState() {
     super.initState();
@@ -47,12 +52,93 @@ class _ActiveTripScreenState extends State<ActiveTripScreen> {
     _dropoffLng = widget.tripData['dropoff_lng'] ?? -73.2483;
     
     _requestLocationPermission();
+    _startPassengerTracking();
   }
 
   @override
   void dispose() {
     _positionStream?.cancel();
+    _passengerLocationSub?.cancel();
     super.dispose();
+  }
+
+  // ── Escuchar posición del pasajero desde users.position ──
+
+  void _startPassengerTracking() {
+    final passengerId = widget.tripData['passenger_id'] as String?;
+    if (passengerId == null || passengerId.isEmpty) return;
+
+    _passengerLocationSub = _tripRepo.listenUserPosition(passengerId).listen((userData) {
+      if (!mounted || userData.isEmpty) return;
+      final position = userData['position'];
+      if (position == null) return;
+      final lat = (position['lat'] as num?)?.toDouble();
+      final lng = (position['lng'] as num?)?.toDouble();
+      if (lat != null && lng != null) {
+        _updatePassengerMarkerOnMap(lat, lng);
+      }
+    });
+  }
+
+  /// Pinta/actualiza marcador del pasajero (CircleLayer) sin recrear source/layer.
+  Future<void> _updatePassengerMarkerOnMap(double lat, double lng) async {
+    if (_mapController == null) return;
+
+    final geojsonString = jsonEncode({
+      "type": "FeatureCollection",
+      "features": [
+        {
+          "type": "Feature",
+          "geometry": {
+            "type": "Point",
+            "coordinates": [lng, lat]
+          },
+          "properties": {}
+        }
+      ]
+    });
+
+    try {
+      if (!_passengerSourceAdded) {
+        // Primera vez: crear source + layer con icono de persona
+        await _mapController!.style.addSource(
+          mbx.GeoJsonSource(id: "passenger-source", data: geojsonString),
+        );
+        await _mapController!.style.addLayer(mbx.CircleLayer(
+          id: "passenger-layer",
+          sourceId: "passenger-source",
+          circleRadius: 12.0,
+          circleColor: const Color(0xFF007AFF).value,
+          circleStrokeColor: Colors.white.value,
+          circleStrokeWidth: 3.0,
+        ));
+        _passengerSourceAdded = true;
+      } else {
+        // Optimización: solo actualizar datos del GeoJsonSource → sin parpadeo
+        final source = await _mapController!.style.getSource("passenger-source");
+        if (source is mbx.GeoJsonSource) {
+          await source.updateGeoJSON(geojsonString);
+        }
+      }
+    } catch (e) {
+      debugPrint('Error updating passenger marker: $e');
+    }
+  }
+
+  /// Remueve el marcador del pasajero del mapa.
+  Future<void> _removePassengerMarker() async {
+    if (_mapController == null) return;
+    try {
+      if (await _mapController!.style.styleLayerExists("passenger-layer") == true) {
+        await _mapController!.style.removeStyleLayer("passenger-layer");
+      }
+      if (await _mapController!.style.styleSourceExists("passenger-source") == true) {
+        await _mapController!.style.removeStyleSource("passenger-source");
+      }
+      _passengerSourceAdded = false;
+    } catch (e) {
+      debugPrint('Error removing passenger marker: $e');
+    }
   }
 
   Future<void> _requestLocationPermission() async {
@@ -232,6 +318,7 @@ class _ActiveTripScreenState extends State<ActiveTripScreen> {
     if (_currentPhase == 'searching_passenger') {
       setState(() => _currentPhase = 'en_curso');
       await _updateTripStatus('en_curso');
+      // Redibujar ruta de pickup a destino
       await _drawRoute(
         mbx.Position(_pickupLng, _pickupLat), 
         mbx.Position(_dropoffLng, _dropoffLat)
@@ -239,6 +326,9 @@ class _ActiveTripScreenState extends State<ActiveTripScreen> {
     } else if (_currentPhase == 'en_curso') {
       setState(() => _currentPhase = 'finalizado');
       await _updateTripStatus('finalizado');
+      // Limpiar tracking del pasajero
+      _passengerLocationSub?.cancel();
+      await _removePassengerMarker();
       if (mounted) {
         Navigator.pop(context); 
       }

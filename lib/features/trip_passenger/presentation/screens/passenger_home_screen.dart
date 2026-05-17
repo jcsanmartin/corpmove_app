@@ -18,6 +18,7 @@ import 'package:http/http.dart' as http;
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:corpmove_app/features/trip_passenger/presentation/screens/waiting_driver_screen.dart';
 import 'package:corpmove_app/features/data/repositories/trip_supabase_repository.dart';
+import 'package:corpmove_app/core/services/location_tracking_service.dart';
 
 const String MAPBOX_TOKEN = "pk.eyJ1IjoiamNzYW5tYXJ0aW4iLCJhIjoiY21vYWJsZmUzMDR5eTJ4cTA5MmFvbmJpbSJ9.OZtHCg1w7y-HUow9Cl9Vsw";
 
@@ -64,6 +65,7 @@ class _PassengerHomeScreenState extends State<PassengerHomeScreen> {
   // Precio propuesto y conductores cercanos
   final TextEditingController _fareController = TextEditingController();
   final TripSupabaseRepository _tripRepo = TripSupabaseRepository();
+  final LocationTrackingService _locationService = LocationTrackingService();
   List<Map<String, dynamic>> _nearbyDrivers = [];
   Timer? _driverRefreshTimer;
   bool _isCreatingTrip = false;
@@ -110,6 +112,7 @@ class _PassengerHomeScreenState extends State<PassengerHomeScreen> {
     _positionStream?.cancel();
     _driverRefreshTimer?.cancel();
     _fareController.dispose();
+    _locationService.stopTracking();
     super.dispose();
   }
 
@@ -522,6 +525,9 @@ class _PassengerHomeScreenState extends State<PassengerHomeScreen> {
       );
 
       if (mounted) {
+        // Iniciar tracking GPS del pasajero → users.position
+        await _locationService.startTracking(supabaseUserId);
+
         await Navigator.push(
           context,
           MaterialPageRoute(
@@ -536,6 +542,9 @@ class _PassengerHomeScreenState extends State<PassengerHomeScreen> {
             ),
           ),
         );
+
+        // Detener tracking al volver de la pantalla de espera
+        _locationService.stopTracking();
         // Reset al volver
         if (mounted) {
           setState(() {

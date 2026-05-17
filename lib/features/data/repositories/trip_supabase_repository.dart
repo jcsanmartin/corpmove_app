@@ -281,4 +281,38 @@ class TripSupabaseRepository {
       return [];
     }
   }
+
+  // ──────────────────────────────────────────────
+  //  GPS REALTIME — Actualizar posición en tabla users
+  // ──────────────────────────────────────────────
+
+  /// Actualiza la columna `position` (jsonb) de la tabla `users`
+  /// con las coordenadas lat/lng del usuario.
+  Future<void> updateUserPosition({
+    required String userId,
+    required double lat,
+    required double lng,
+  }) async {
+    try {
+      await _client.from('users').update({
+        'position': {'lat': lat, 'lng': lng},
+      }).eq('id', userId);
+    } catch (e) {
+      debugPrint('Error actualizando posición del usuario: $e');
+    }
+  }
+
+  // ──────────────────────────────────────────────
+  //  GPS REALTIME — Stream de posición de un usuario
+  // ──────────────────────────────────────────────
+
+  /// Stream Realtime que emite cada vez que la posición de un usuario cambia.
+  /// Retorna un Map con la data completa del usuario (incluyendo `position`).
+  Stream<Map<String, dynamic>> listenUserPosition(String userId) {
+    return _client
+        .from('users')
+        .stream(primaryKey: ['id'])
+        .eq('id', userId)
+        .map((list) => list.isNotEmpty ? list.first : <String, dynamic>{});
+  }
 }

@@ -6,6 +6,7 @@ import 'package:corpmove_app/features/trip_driver/presentation/screens/driver_pr
 import 'package:corpmove_app/features/trip_driver/presentation/screens/driver_settings_screen.dart';
 import 'package:corpmove_app/features/trip_driver/presentation/screens/active_trip_screen.dart';
 import 'package:corpmove_app/features/data/repositories/trip_supabase_repository.dart';
+import 'package:corpmove_app/core/services/location_tracking_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:geolocator/geolocator.dart';
 
@@ -20,10 +21,14 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
   int _selectedIndex = 0;
   final TripSupabaseRepository _tripRepo = TripSupabaseRepository();
 
-  // Publicación de ubicación
+  // Publicación de ubicación (driver_locations para descubrimiento)
   Timer? _locationTimer;
   StreamSubscription<Position>? _positionStream;
   Position? _lastPosition;
+
+  // GPS Realtime → users.position
+  final LocationTrackingService _locationService = LocationTrackingService();
+  String? _supabaseDriverId;
 
   @override
   void initState() {
@@ -35,6 +40,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
   void dispose() {
     _locationTimer?.cancel();
     _positionStream?.cancel();
+    _locationService.stopTracking();
     super.dispose();
   }
 
@@ -51,6 +57,15 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
     }
     if (permission == LocationPermission.deniedForever) return;
 
+    // Obtener Supabase UUID e iniciar tracking en users.position
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      _supabaseDriverId = await _tripRepo.getSupabaseUserId(user.uid);
+      if (_supabaseDriverId != null) {
+        _locationService.startTracking(_supabaseDriverId!);
+      }
+    }
+
     // Obtener posición inicial
     try {
       _lastPosition = await Geolocator.getCurrentPosition(
@@ -61,7 +76,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
       debugPrint('Error getting initial position: $e');
     }
 
-    // Stream de ubicación
+    // Stream de ubicación (para driver_locations)
     _positionStream = Geolocator.getPositionStream(
       locationSettings: const LocationSettings(
         accuracy: LocationAccuracy.high,
@@ -71,7 +86,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
       _lastPosition = position;
     });
 
-    // Timer para publicar cada 30 segundos
+    // Timer para publicar en driver_locations cada 30 segundos
     _locationTimer = Timer.periodic(const Duration(seconds: 30), (_) {
       _publishLocation();
     });
@@ -128,6 +143,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
               'dropoff_lng': (trip['dest_lng'] as num?)?.toDouble() ?? -73.2483,
               'status': 'aceptado',
               'client_name': 'Pasajero',
+              'passenger_id': trip['user_id'], // UUID del pasajero para tracking
             }),
           ),
         );

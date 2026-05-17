@@ -96,10 +96,8 @@ class _WaitingDriverScreenState extends State<WaitingDriverScreen>
           final fetchedName = await _tripRepo.getUserDisplayName(driverId);
           if (fetchedName != null) driverNameStr = fetchedName;
           
-          final firebaseUid = await _tripRepo.getFirebaseUid(driverId);
-          if (firebaseUid != null) {
-            _startDriverTracking(firebaseUid);
-          }
+          // Escuchar posición del conductor desde users.position (Supabase UUID)
+          _startDriverTracking(driverId);
         }
         
         if (mounted) {
@@ -126,12 +124,15 @@ class _WaitingDriverScreenState extends State<WaitingDriverScreen>
     });
   }
   
-  void _startDriverTracking(String firebaseUid) {
+  void _startDriverTracking(String driverSupabaseId) {
     _driverLocationSub?.cancel();
-    _driverLocationSub = _tripRepo.listenDriverLocation(firebaseUid).listen((locationData) {
-      if (!mounted || locationData.isEmpty) return;
-      final lat = (locationData['latitude'] as num?)?.toDouble();
-      final lng = (locationData['longitude'] as num?)?.toDouble();
+    // Stream Realtime de la tabla users filtrando por driver_id (UUID Supabase)
+    _driverLocationSub = _tripRepo.listenUserPosition(driverSupabaseId).listen((userData) {
+      if (!mounted || userData.isEmpty) return;
+      final position = userData['position'];
+      if (position == null) return;
+      final lat = (position['lat'] as num?)?.toDouble();
+      final lng = (position['lng'] as num?)?.toDouble();
       if (lat != null && lng != null) {
         _updateDriverMarkerOnMap(lat, lng);
       }
@@ -139,6 +140,7 @@ class _WaitingDriverScreenState extends State<WaitingDriverScreen>
   }
 
   bool _carImageAdded = false;
+  bool _driverSourceAdded = false;
 
   Future<void> _addCarImage() async {
     if (_mapController == null || _carImageAdded) return;
@@ -188,47 +190,53 @@ class _WaitingDriverScreenState extends State<WaitingDriverScreen>
     await _addCarImage();
 
     final geojsonString = jsonEncode({
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [lng, lat]
-      },
-      "properties": {}
+      "type": "FeatureCollection",
+      "features": [
+        {
+          "type": "Feature",
+          "geometry": {
+            "type": "Point",
+            "coordinates": [lng, lat]
+          },
+          "properties": {}
+        }
+      ]
     });
 
     try {
-      // Remove old source (and layer if needed)
-      if (await _mapController!.style.styleSourceExists("driver-source") == true) {
-        if (await _mapController!.style.styleLayerExists("driver-layer") == true) {
-          await _mapController!.style.removeStyleLayer("driver-layer");
+      if (!_driverSourceAdded) {
+        // Primera vez: crear source + layer
+        await _mapController!.style.addSource(
+          mbx.GeoJsonSource(id: "driver-source", data: geojsonString),
+        );
+
+        if (_carImageAdded) {
+          await _mapController!.style.addLayer(mbx.SymbolLayer(
+            id: "driver-layer",
+            sourceId: "driver-source",
+            iconImage: 'car-icon',
+            iconSize: 0.6,
+            iconAllowOverlap: true,
+            iconIgnorePlacement: true,
+          ));
+        } else {
+          await _mapController!.style.addLayer(mbx.CircleLayer(
+            id: "driver-layer",
+            sourceId: "driver-source",
+            circleRadius: 10.0,
+            circleColor: Colors.deepPurpleAccent.value,
+            circleStrokeColor: Colors.white.value,
+            circleStrokeWidth: 3.0,
+          ));
         }
-        await _mapController!.style.removeStyleSource("driver-source");
-      }
-
-      // Re-add source with updated position
-      await _mapController!.style.addSource(
-        mbx.GeoJsonSource(id: "driver-source", data: geojsonString),
-      );
-
-      // Re-add layer
-      if (_carImageAdded) {
-        await _mapController!.style.addLayer(mbx.SymbolLayer(
-          id: "driver-layer",
-          sourceId: "driver-source",
-          iconImage: 'car-icon',
-          iconSize: 0.6,
-          iconAllowOverlap: true,
-          iconIgnorePlacement: true,
-        ));
+        _driverSourceAdded = true;
       } else {
-        await _mapController!.style.addLayer(mbx.CircleLayer(
-          id: "driver-layer",
-          sourceId: "driver-source",
-          circleRadius: 10.0,
-          circleColor: Colors.deepPurpleAccent.value,
-          circleStrokeColor: Colors.white.value,
-          circleStrokeWidth: 3.0,
-        ));
+        // Optimización: solo actualizar los datos del GeoJsonSource existente
+        // sin recrear el source ni el layer → evita parpadeos
+        final source = await _mapController!.style.getSource("driver-source");
+        if (source is mbx.GeoJsonSource) {
+          await source.updateGeoJSON(geojsonString);
+        }
       }
     } catch (e) {
       debugPrint('Error updating driver marker: $e');
@@ -244,6 +252,7 @@ class _WaitingDriverScreenState extends State<WaitingDriverScreen>
       if (await _mapController!.style.styleSourceExists("driver-source") == true) {
         await _mapController!.style.removeStyleSource("driver-source");
       }
+      _driverSourceAdded = false;
     } catch (e) {
       debugPrint('Error removing driver marker: $e');
     }
